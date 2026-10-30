@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>課程教室公告看板 (舊安卓高相容版)</title>
+    <title>課程教室公告看板 (極致美化動態相容版)</title>
     <style>
         /* --- 基礎鎖定與重置 --- */
         * {
@@ -186,7 +186,7 @@
             padding: 0 4px;
         }
 
-        /* --- 4 個卡片欄位 (水彩風格) --- */
+        /* --- 4 個卡片欄位 (水彩風格 + 換頁漸顯動畫) --- */
         .card-container {
             width: 100%;
             flex: 1;
@@ -207,6 +207,25 @@
             box-shadow: 0px 6px 0px rgba(51, 65, 85, 0.15), 0px 10px 15px rgba(0, 0, 0, 0.05);
             overflow: hidden;
             height: 110px;
+            /* 預設套用輕量淡入動畫 */
+            animation: cardFadeIn 0.5s ease forwards;
+        }
+
+        /* 循序進入的延遲時間設定 */
+        .watercolor-card:nth-child(1) { animation-delay: 0.05s; }
+        .watercolor-card:nth-child(2) { animation-delay: 0.12s; }
+        .watercolor-card:nth-child(3) { animation-delay: 0.19s; }
+        .watercolor-card:nth-child(4) { animation-delay: 0.26s; }
+
+        @keyframes cardFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .bg-cardMint { background-color: #a2e3c4; }
@@ -352,14 +371,6 @@
             0% { transform: translateX(100%); }
             100% { transform: translateX(-100%); }
         }
-
-        /* SVG Icon 尺寸固定 */
-        .svg-icon {
-            width: 18px;
-            height: 18px;
-            fill: currentColor;
-            vertical-align: middle;
-        }
     </style>
 </head>
 <body>
@@ -376,7 +387,7 @@
                         <div class="icon-badge">📢</div>
                         <h1 id="boardTitle" class="board-title">課程教室公告</h1>
                         <div id="topClockContainer" class="clock-container">
-                            <svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 2C6.486 2 2 6.486 2 12s4.486 10 10 10 10-4.486 10-10S17.514 2 12 2zm0 18c-4.411 0-8-3.589-8-8s3.589-8 8-8 8 3.589 8 8-3.589 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/></svg>
+                            <span>⏰</span>
                             <span id="topClockText">加載中...</span>
                         </div>
                     </div>
@@ -384,9 +395,7 @@
 
                 <!-- Row 2: Day Selector & Pagination -->
                 <div class="header-row2">
-                    <div id="daySelector" class="day-selector">
-                        <!-- 由 JS 動態生成 -->
-                    </div>
+                    <div id="daySelector" class="day-selector"></div>
 
                     <div id="pageBadge" class="page-badge" style="display: none;">
                         <button onclick="prevPage()" class="page-btn">◀</button>
@@ -408,12 +417,12 @@
                         <div class="course-details">
                             <div id="name-0" class="course-name">--</div>
                             <div class="teacher-name">
-                                <svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
+                                <span>👨‍🏫</span>
                                 <span id="teacher-0">--</span>
                             </div>
                         </div>
                         <div class="room-badge">
-                            📍 <span id="room-0">--</span>
+                            🏫 <span id="room-0">--</span>
                         </div>
                     </div>
                 </div>
@@ -428,12 +437,12 @@
                         <div class="course-details">
                             <div id="name-1" class="course-name">--</div>
                             <div class="teacher-name">
-                                <svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
+                                <span>👨‍🏫</span>
                                 <span id="teacher-1">--</span>
                             </div>
                         </div>
                         <div class="room-badge">
-                            📍 <span id="room-1">--</span>
+                            🏫 <span id="room-1">--</span>
                         </div>
                     </div>
                 </div>
@@ -448,12 +457,12 @@
                         <div class="course-details">
                             <div id="name-2" class="course-name">--</div>
                             <div class="teacher-name">
-                                <svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
+                                <span>👨‍🏫</span>
                                 <span id="teacher-2">--</span>
                             </div>
                         </div>
                         <div class="room-badge">
-                            📍 <span id="room-2">--</span>
+                            🏫 <span id="room-2">--</span>
                         </div>
                     </div>
                 </div>
@@ -468,12 +477,12 @@
                         <div class="course-details">
                             <div id="name-3" class="course-name">--</div>
                             <div class="teacher-name">
-                                <svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
+                                <span>👨‍🏫</span>
                                 <span id="teacher-3">--</span>
                             </div>
                         </div>
                         <div class="room-badge">
-                            📍 <span id="room-3">--</span>
+                            🏫 <span id="room-3">--</span>
                         </div>
                     </div>
                 </div>
@@ -494,7 +503,7 @@
 
     <!-- APP LOGIC -->
     <script>
-        // 1. 將你的 Google 試算表 CSV 網址填在此處
+        // 替換為你的 Google 試算表 CSV 網址
         const COURSES_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTkOoAr-xdQSYp8U6yyedy5uUypUlQVQiPSiVzLd8lAEmfQacXXY2g8hNEjcmeObgxRcguKX7xsr34V/pub?gid=0&single=true&output=csv";
         const CONFIG_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTkOoAr-xdQSYp8U6yyedy5uUypUlQVQiPSiVzLd8lAEmfQacXXY2g8hNEjcmeObgxRcguKX7xsr34V/pub?gid=962273106&single=true&output=csv";
 
@@ -516,7 +525,6 @@
         let marqueeText = "歡迎蒞臨！請全程佩戴口罩並保持社交距離。";
         let carouselIntervalSec = 8;
 
-        // 相容性高之 CSV 解析函式
         function parseCSV(text) {
             var lines = text.split('\n');
             var result = [];
@@ -536,7 +544,6 @@
             return result;
         }
 
-        // 雲端拉取試算表資料
         function fetchScheduleFromGoogleSheet() {
             if (CONFIG_CSV_URL && CONFIG_CSV_URL.indexOf("YOUR_CONFIG") === -1) {
                 var xhrConfig = new XMLHttpRequest();
@@ -673,7 +680,14 @@
 
                 if (item) {
                     card.style.visibility = 'visible';
-                    card.style.opacity = '1';
+                    card.style.display = 'flex';
+                    
+                    // 重新觸發 CSS 漸顯動畫技巧
+                    card.style.animation = 'none';
+                    card.offsetHeight; /* trigger reflow */
+                    card.style.animation = 'cardFadeIn 0.5s ease forwards';
+                    card.style.animationDelay = (i * 0.07) + 's';
+
                     document.getElementById('time-' + i).innerText = (item.startTime || '00:00') + ' - ' + (item.endTime || '00:00');
                     document.getElementById('name-' + i).innerText = item.name || '未命名課程';
                     document.getElementById('teacher-' + i).innerText = item.teacher || '未指定';
@@ -685,7 +699,7 @@
                     statusElem.className = 'status-pill ' + statusObj.class;
                 } else {
                     card.style.visibility = 'hidden';
-                    card.style.opacity = '0';
+                    card.style.display = 'none';
                 }
             }
             resetCarouselTimer(totalPages);
@@ -750,7 +764,6 @@
             updateSignageScale();
             fetchScheduleFromGoogleSheet();
             setInterval(updateTopClock, 1000);
-            // 每 5 分鐘自動刷新試算表最新資料
             setInterval(fetchScheduleFromGoogleSheet, 300000);
         };
 
