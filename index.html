@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>課程教室公告看板 (雙時段重疊混合輪播版)</title>
+    <title>課程教室公告看板 (全功能雲端智能輪播版)</title>
     <style>
         /* --- 基礎鎖定與重置 --- */
         * {
@@ -65,6 +65,7 @@
             transition: all 0.3s ease;
         }
 
+        /* 隱藏 Header 時的控制樣式 */
         .header-bar.is-hidden {
             display: none !important;
         }
@@ -191,7 +192,7 @@
             padding: 0 4px;
         }
 
-        /* --- 4 個卡片欄位 (水彩風格) --- */
+        /* --- 4 個卡片欄位 (水彩風格 + 換頁漸顯動畫) --- */
         .card-container {
             width: 100%;
             flex: 1;
@@ -217,15 +218,28 @@
             transition: height 0.3s ease, padding 0.3s ease;
         }
 
+        /* 當 Header 隱藏時，自動將卡片拉高放大字體 */
         .card-container.expand-mode .watercolor-card {
             height: 132px;
             padding: 14px 24px;
         }
 
-        .card-container.expand-mode .time-text { font-size: 26px; }
-        .card-container.expand-mode .course-name { font-size: 30px; }
-        .card-container.expand-mode .teacher-name { font-size: 20px; }
-        .card-container.expand-mode .room-badge { font-size: 26px; padding: 10px 22px; }
+        .card-container.expand-mode .time-text {
+            font-size: 26px;
+        }
+
+        .card-container.expand-mode .course-name {
+            font-size: 30px;
+        }
+
+        .card-container.expand-mode .teacher-name {
+            font-size: 20px;
+        }
+
+        .card-container.expand-mode .room-badge {
+            font-size: 26px;
+            padding: 10px 22px;
+        }
 
         .watercolor-card:nth-child(1) { animation-delay: 0.05s; }
         .watercolor-card:nth-child(2) { animation-delay: 0.12s; }
@@ -233,8 +247,14 @@
         .watercolor-card:nth-child(4) { animation-delay: 0.26s; }
 
         @keyframes cardFadeIn {
-            from { opacity: 0; transform: translateY(8px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .bg-cardMint { background-color: #a2e3c4; }
@@ -334,11 +354,11 @@
             gap: 6px;
         }
 
-        /* --- 招生圖片全螢幕展架 --- */
+        /* --- 新增：招生圖片全螢幕輪播容器 --- */
         .banner-display-container {
             width: 100%;
             flex: 1;
-            display: none;
+            display: none; /* 預設隱藏，需要時才開啟 */
             border: 3.5px solid #334155;
             border-radius: 20px;
             overflow: hidden;
@@ -411,9 +431,11 @@
 </head>
 <body>
 
+    <!-- 1080x730 畫布容器 -->
     <div id="scaleWrapper" class="signage-scale-wrapper">
         <div class="signage-container">
 
+            <!-- HEADER BAR -->
             <header id="mainHeader" class="header-bar">
                 <div class="header-row1">
                     <div class="header-title-box">
@@ -437,6 +459,7 @@
                 </div>
             </header>
 
+            <!-- MAIN DISPLAY: 4 CARDS -->
             <main id="cardContainer" class="card-container">
                 <div id="card-0" class="watercolor-card bg-cardMint">
                     <div class="time-box">
@@ -515,10 +538,12 @@
                 </div>
             </main>
 
+            <!-- BANNERS DISPLAY (招生圖片全螢幕展架) -->
             <div id="bannerContainer" class="banner-display-container">
                 <img id="bannerImg" class="banner-img" src="" alt="招生海報">
             </div>
 
+            <!-- FOOTER MARQUEE -->
             <footer class="footer-bar">
                 <span class="marquee-label">📢 公告</span>
                 <div class="marquee-container">
@@ -531,11 +556,13 @@
         </div>
     </div>
 
+    <!-- APP LOGIC -->
     <script>
+        // Google 試算表 CSV 網址
         const COURSES_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTkOoAr-xdQSYp8U6yyedy5uUypUlQVQiPSiVzLd8lAEmfQacXXY2g8hNEjcmeObgxRcguKX7xsr34V/pub?gid=0&single=true&output=csv";
         const CONFIG_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTkOoAr-xdQSYp8U6yyedy5uUypUlQVQiPSiVzLd8lAEmfQacXXY2g8hNEjcmeObgxRcguKX7xsr34V/pub?gid=962273106&single=true&output=csv";
-        // ⚠️ 請記得填入你發佈的 Banners CSV 網址
-        const BANNERS_CSV_URL = "YOUR_BANNERS_CSV_URL_HERE";
+        // ⚠️ 請記得將下方引號內改為你『Banners』工作表發佈的 CSV 連結！
+        const BANNERS_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTkOoAr-xdQSYp8U6yyedy5uUypUlQVQiPSiVzLd8lAEmfQacXXY2g8hNEjcmeObgxRcguKX7xsr34V/pub?gid=1617619420&single=true&output=csv";
 
         const DAYS = [
             { id: 1, name: '一' },
@@ -548,26 +575,24 @@
         ];
 
         let currentSchedule = { 0:[], 1:[], 2:[], 3:[], 4:[], 5:[], 6:[] };
-        let bannerList = [];
+        let bannerList = []; // 存放圖片網址與播放時間
         let currentBannerIndex = 0;
         
         let activeDay = new Date().getDay();
         let currentPage = 0;
         let carouselTimer = null;
         
+        // 系統控制參數 (帶有預設值)
         let boardTitle = "課程教室公告";
-        let marqueeText = "歡迎蒞臨！請全程佩戴口罩並保持社交獨立。";
+        let marqueeText = "歡迎蒞臨！請全程佩戴口罩並保持社交距離。";
         let carouselIntervalSec = 8;
         let showHeader = true;
-        let showCourses = true;
-        
-        let courseStartTime = "16:00";
-        let courseEndTime = "22:00";
-        let bannerStartTime = "08:00";
-        let bannerEndTime = "20:00";
-        let bannerIntervalSec = 10;
+        let showCourses = true;             // 最高優先權總開關
+        let courseStartTime = "16:00";       // 課表開始時段
+        let courseEndTime = "22:00";         // 課表結束時段
+        let bannerIntervalSec = 10;          // 預設圖片播放秒數
 
-        let currentMode = 'COURSE';
+        let currentMode = 'COURSE'; // 'COURSE' (播課表) 或 'BANNER' (播圖片)
 
         function parseCSV(text) {
             var lines = text.split('\n');
@@ -588,16 +613,6 @@
             return result;
         }
 
-        // 自動將一般 Google 雲端硬碟分享連結轉為直鏈
-        function convertDriveUrl(url) {
-            if (!url) return '';
-            var match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
-            if (match && match[1]) {
-                return 'https://drive.google.com/uc?export=view&id=' + match[1];
-            }
-            return url;
-        }
-
         function applyHeaderVisibility(visible) {
             var headerElem = document.getElementById('mainHeader');
             var cardContainer = document.getElementById('cardContainer');
@@ -610,7 +625,8 @@
             }
         }
 
-        function isTimeBetween(startStr, endStr) {
+        // 判斷當前時間是否位於課表開放時段 (例如 16:00 ~ 22:00)
+        function isWithinCourseHours() {
             var now = new Date();
             var currentMins = now.getHours() * 60 + now.getMinutes();
 
@@ -620,20 +636,19 @@
                 return parseInt(parts[0]) * 60 + parseInt(parts[1]);
             };
 
-            var startMins = parseMins(startStr);
-            var endMins = parseMins(endStr);
+            var startMins = parseMins(courseStartTime);
+            var endMins = parseMins(courseEndTime);
 
             if (startMins <= endMins) {
                 return currentMins >= startMins && currentMins < endMins;
             } else {
+                // 跨夜處理
                 return currentMins >= startMins || currentMins < endMins;
             }
         }
 
-        function isCourseTime() { return isTimeBetween(courseStartTime, courseEndTime); }
-        function isBannerTime() { return isTimeBetween(bannerStartTime, bannerEndTime); }
-
         function fetchScheduleFromGoogleSheet() {
+            // 1. 抓取 Config 參數
             if (CONFIG_CSV_URL && CONFIG_CSV_URL.indexOf("YOUR_CONFIG") === -1) {
                 var xhrConfig = new XMLHttpRequest();
                 xhrConfig.open('GET', CONFIG_CSV_URL, true);
@@ -649,8 +664,6 @@
                             if (row.Key === 'showCourses') showCourses = String(row.Value).toLowerCase() !== 'false';
                             if (row.Key === 'courseStartTime') courseStartTime = row.Value || "16:00";
                             if (row.Key === 'courseEndTime') courseEndTime = row.Value || "22:00";
-                            if (row.Key === 'bannerStartTime') bannerStartTime = row.Value || "08:00";
-                            if (row.Key === 'bannerEndTime') bannerEndTime = row.Value || "20:00";
                             if (row.Key === 'bannerIntervalSec') bannerIntervalSec = parseInt(row.Value) || 10;
                         }
                         document.getElementById('boardTitle').innerText = boardTitle;
@@ -661,6 +674,7 @@
                 xhrConfig.send();
             }
 
+            // 2. 抓取 Banners 圖片清單
             if (BANNERS_CSV_URL && BANNERS_CSV_URL.indexOf("YOUR_BANNERS") === -1) {
                 var xhrBanners = new XMLHttpRequest();
                 xhrBanners.open('GET', BANNERS_CSV_URL, true);
@@ -672,7 +686,7 @@
                             var item = bannersData[i];
                             if (item.ImageUrl && item.ImageUrl.trim() !== '') {
                                 newBanners.push({
-                                    url: convertDriveUrl(item.ImageUrl.trim()),
+                                    url: item.ImageUrl.trim(),
                                     duration: parseInt(item.DurationSec) || bannerIntervalSec
                                 });
                             }
@@ -683,6 +697,7 @@
                 xhrBanners.send();
             }
 
+            // 3. 抓取 Courses 課表
             if (COURSES_CSV_URL && COURSES_CSV_URL.indexOf("YOUR_COURSES") === -1) {
                 var xhrCourses = new XMLHttpRequest();
                 xhrCourses.open('GET', COURSES_CSV_URL, true);
@@ -704,6 +719,7 @@
                             }
                         }
                         currentSchedule = newSchedule;
+                        // 重新評判當前模式並渲染
                         evaluateDisplayModeAndRender();
                         renderDaySelector();
                     }
@@ -712,22 +728,28 @@
             }
         }
 
+        // 核心切換邏輯：評估現在該播「課表」還是「圖片」
         function evaluateDisplayModeAndRender() {
+            // 最高優先權判斷[cite: 1]
             if (!showCourses) {
-                if (bannerList.length > 0) switchMode('BANNER');
-                else switchMode('COURSE');
+                // 如果強制不可播課表 ➔ 切換至圖片模式 (若無圖片則退回課表)
+                if (bannerList.length > 0) {
+                    switchMode('BANNER');
+                } else {
+                    switchMode('COURSE');
+                }
                 return;
             }
 
-            var inCourse = isCourseTime();
-            var inBanner = isBannerTime() && bannerList.length > 0;
-
-            if (inCourse) {
+            // 時間時段判斷
+            if (isWithinCourseHours()) {
                 switchMode('COURSE');
-            } else if (inBanner) {
-                switchMode('BANNER');
             } else {
-                switchMode('COURSE');
+                if (bannerList.length > 0) {
+                    switchMode('BANNER');
+                } else {
+                    switchMode('COURSE');
+                }
             }
         }
 
@@ -739,15 +761,13 @@
             if (currentMode === 'BANNER' && bannerList.length > 0) {
                 cardContainer.style.display = 'none';
                 bannerContainer.style.display = 'block';
-                applyHeaderVisibility(false);
-                currentBannerIndex = 0;
+                applyHeaderVisibility(false); // 播圖片時強制讓 Header 隱藏專心播圖
                 renderBanner();
             } else {
                 currentMode = 'COURSE';
                 bannerContainer.style.display = 'none';
                 cardContainer.style.display = 'flex';
                 applyHeaderVisibility(showHeader);
-                currentPage = 0;
                 renderBoard();
             }
         }
@@ -761,8 +781,8 @@
 
             if (currentBannerIndex >= bannerList.length) {
                 currentBannerIndex = 0;
-                // 重疊時段判定：如果課表時間也到了，切換回課表
-                if (showCourses && isCourseTime()) {
+                // 圖片輪播完一輪後，重新檢查時間與開關狀態
+                if (showCourses && isWithinCourseHours()) {
                     switchMode('COURSE');
                     return;
                 }
@@ -772,6 +792,7 @@
             var imgElem = document.getElementById('bannerImg');
             imgElem.src = item.url;
 
+            // 定時切換下一張圖片
             carouselTimer = setTimeout(function() {
                 currentBannerIndex++;
                 renderBanner();
@@ -849,8 +870,8 @@
 
             if (currentPage >= totalPages) {
                 currentPage = 0;
-                // 當課表輪播完一輪，如果處於 Banners 時段，切換播放圖片
-                if (bannerList.length > 0 && isBannerTime()) {
+                // 當當日課表完整輪播一輪完畢後，如果有圖片則順暢切換至圖片輪播
+                if (bannerList.length > 0 && (!isWithinCourseHours() || !showCourses)) {
                     switchMode('BANNER');
                     return;
                 }
@@ -875,7 +896,7 @@
                     card.style.display = 'flex';
                     
                     card.style.animation = 'none';
-                    card.offsetHeight;
+                    card.offsetHeight; /* trigger reflow */
                     card.style.animation = 'cardFadeIn 0.5s ease forwards';
                     card.style.animationDelay = (i * 0.07) + 's';
 
@@ -913,8 +934,8 @@
                 currentPage++;
                 if (currentPage >= latestTotalPages) {
                     currentPage = 0;
-                    // 當課表播放完一輪，若屬於 Banners 時段，順暢切換至廣告圖片
-                    if (bannerList.length > 0 && isBannerTime()) {
+                    // 當課表播放完一輪，若時間非課表時間，切換至廣告圖片
+                    if (bannerList.length > 0 && !isWithinCourseHours()) {
                         switchMode('BANNER');
                         return;
                     }
@@ -958,7 +979,7 @@
             updateSignageScale();
             fetchScheduleFromGoogleSheet();
             setInterval(updateTopClock, 1000);
-            setInterval(fetchScheduleFromGoogleSheet, 300000);
+            setInterval(fetchScheduleFromGoogleSheet, 300000); // 每 5 分鐘遠端同步一次
         };
 
         window.onresize = function() {
