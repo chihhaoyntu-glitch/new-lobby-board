@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>課程教室公告看板 (完全體智能輪播版)</title>
+    <title>課程教室公告看板 (試算表圖片直讀版)</title>
     <style>
         /* --- 基礎鎖定與重置 --- */
         * {
@@ -515,11 +515,10 @@
 
     <!-- APP LOGIC -->
     <script>
-        // 替換為你的 Google 試算表 CSV 網址
         const COURSES_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTkOoAr-xdQSYp8U6yyedy5uUypUlQVQiPSiVzLd8lAEmfQacXXY2g8hNEjcmeObgxRcguKX7xsr34V/pub?gid=0&single=true&output=csv";
         const CONFIG_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTkOoAr-xdQSYp8U6yyedy5uUypUlQVQiPSiVzLd8lAEmfQacXXY2g8hNEjcmeObgxRcguKX7xsr34V/pub?gid=962273106&single=true&output=csv";
         // ⚠️ 請填入你 Banners 工作表發佈的 CSV 網址
-        const BANNERS_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTkOoAr-xdQSYp8U6yyedy5uUypUlQVQiPSiVzLd8lAEmfQacXXY2g8hNEjcmeObgxRcguKX7xsr34V/pub?gid=1617619420&single=true&output=csv";
+        const BANNERS_CSV_URL = "YOUR_BANNERS_CSV_URL_HERE";
 
         const DAYS = [
             { id: 1, name: '一' }, { id: 2, name: '二' }, { id: 3, name: '三' },
@@ -543,7 +542,7 @@
         let courseEndTime = "22:00";
         let bannerIntervalSec = 10;
 
-        let currentDisplayMode = 'COURSE'; // 'COURSE' 或 'BANNER'
+        let currentDisplayMode = 'COURSE';
 
         function parseCSV(text) {
             var lines = text.split('\n');
@@ -576,17 +575,27 @@
             }
         }
 
-        // 轉換 Google 雲端硬碟分享網址為直接圖片直鏈
-        function convertDriveUrl(url) {
-            if (!url) return '';
-            var match = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
-            if (match && match[1]) {
-                return 'https://drive.google.com/uc?export=view&id=' + match[1];
+        // 超強大圖片網址解析器：支援「純網址」、「Google Drive 網址」以及「Google 試算表內嵌圖片語法」
+        function smartParseImageUrl(rawUrl) {
+            if (!rawUrl) return '';
+            var cleaned = rawUrl.trim();
+
+            // 1. 如果是 Google 雲端硬碟檔案連結
+            var driveMatch = cleaned.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+            if (driveMatch && driveMatch[1]) {
+                return 'https://drive.google.com/uc?export=view&id=' + driveMatch[1];
             }
-            return url;
+
+            // 2. 如果儲存格是用 =IMAGE("網址")
+            var formulaMatch = cleaned.match(/IMAGE\s*\(\s*["']([^"']+)["']/i);
+            if (formulaMatch && formulaMatch[1]) {
+                return smartParseImageUrl(formulaMatch[1]);
+            }
+
+            // 3. 一般網址
+            return cleaned;
         }
 
-        // 檢查當前時間是否在課表時段內
         function isWithinCourseHours() {
             var now = new Date();
             var currentMins = now.getHours() * 60 + now.getMinutes();
@@ -642,9 +651,10 @@
                         var newBanners = [];
                         for (var i = 0; i < bannersData.length; i++) {
                             var item = bannersData[i];
-                            if (item.ImageUrl && item.ImageUrl.trim() !== '') {
+                            var parsedUrl = smartParseImageUrl(item.ImageUrl);
+                            if (parsedUrl !== '') {
                                 newBanners.push({
-                                    url: convertDriveUrl(item.ImageUrl.trim()),
+                                    url: parsedUrl,
                                     duration: parseInt(item.DurationSec) || bannerIntervalSec
                                 });
                             }
@@ -685,25 +695,19 @@
             }
         }
 
-        // 核心排程切換總管
         function decideDisplayModeAndRun() {
             stopMainTimer();
-
-            // 檢查總開關與時段
             var inCourseTime = showCourses && isWithinCourseHours();
 
             if (!inCourseTime && bannerList.length > 0) {
-                // 非課表時段 且有圖片 ➔ 播放 Banners
                 currentDisplayMode = 'BANNER';
                 renderBannerLoop();
             } else {
-                // 課表時段 或者是沒有圖片 ➔ 播放課表
                 currentDisplayMode = 'COURSE';
                 renderCourseLoop();
             }
         }
 
-        // 播放 Banners 循環
         function renderBannerLoop() {
             stopMainTimer();
             var cardContainer = document.getElementById('cardContainer');
@@ -720,7 +724,6 @@
 
             if (currentBannerIndex >= bannerList.length) {
                 currentBannerIndex = 0;
-                // Banners 輪播完一輪後，重新檢視時間是否該切回課表
                 if (showCourses && isWithinCourseHours()) {
                     decideDisplayModeAndRun();
                     return;
@@ -728,7 +731,20 @@
             }
 
             var item = bannerList[currentBannerIndex];
-            document.getElementById('bannerImg').src = item.url;
+            var bannerImg = document.getElementById('bannerImg');
+            
+            // 監聽圖片載入失敗，防呆保護
+            bannerImg.onerror = function() {
+                console.warn('圖片讀取失敗，自動跳至下一張或切回課表');
+                currentBannerIndex++;
+                if (currentBannerIndex >= bannerList.length) {
+                    decideDisplayModeAndRun();
+                } else {
+                    renderBannerLoop();
+                }
+            };
+
+            bannerImg.src = item.url;
 
             mainTimer = setTimeout(function() {
                 currentBannerIndex++;
@@ -736,7 +752,6 @@
             }, item.duration * 1000);
         }
 
-        // 播放課表循環
         function renderCourseLoop() {
             stopMainTimer();
             var cardContainer = document.getElementById('cardContainer');
@@ -751,7 +766,6 @@
 
             if (currentPage >= totalPages) {
                 currentPage = 0;
-                // 課表跑完一輪後，檢查如果現在已經離開課表時段且有圖片，就切去 Banners
                 if (bannerList.length > 0 && (!showCourses || !isWithinCourseHours())) {
                     decideDisplayModeAndRun();
                     return;
@@ -795,7 +809,6 @@
                 }
             }
 
-            // 設定下一頁計時器
             mainTimer = setTimeout(function() {
                 currentPage++;
                 renderCourseLoop();
@@ -900,7 +913,7 @@
             updateSignageScale();
             fetchAllData();
             setInterval(updateTopClock, 1000);
-            setInterval(fetchAllData, 300000); // 每 5 分鐘自動跟遠端同步一次
+            setInterval(fetchAllData, 300000);
         };
 
         window.onresize = updateSignageScale;
