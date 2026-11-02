@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>課程教室公告看板 (極致美化動態相容版)</title>
+    <title>課程教室公告看板 (雲端控制動態 Header 版)</title>
     <style>
         /* --- 基礎鎖定與重置 --- */
         * {
@@ -62,6 +62,12 @@
             flex-direction: column;
             gap: 6px;
             flex-shrink: 0;
+            transition: all 0.3s ease;
+        }
+
+        /* 隱藏 Header 時的控制樣式 */
+        .header-bar.is-hidden {
+            display: none !important;
         }
 
         .header-row1 {
@@ -195,6 +201,7 @@
             gap: 10px;
             margin: auto 0;
             flex-shrink: 0;
+            transition: all 0.3s ease;
         }
 
         .watercolor-card {
@@ -207,8 +214,31 @@
             box-shadow: 0px 6px 0px rgba(51, 65, 85, 0.15), 0px 10px 15px rgba(0, 0, 0, 0.05);
             overflow: hidden;
             height: 110px;
-            /* 預設套用輕量淡入動畫 */
             animation: cardFadeIn 0.5s ease forwards;
+            transition: height 0.3s ease, padding 0.3s ease;
+        }
+
+        /* 當 Header 隱藏時，自動將卡片拉高放大字體 */
+        .card-container.expand-mode .watercolor-card {
+            height: 132px;
+            padding: 14px 24px;
+        }
+
+        .card-container.expand-mode .time-text {
+            font-size: 26px;
+        }
+
+        .card-container.expand-mode .course-name {
+            font-size: 30px;
+        }
+
+        .card-container.expand-mode .teacher-name {
+            font-size: 20px;
+        }
+
+        .card-container.expand-mode .room-badge {
+            font-size: 26px;
+            padding: 10px 22px;
         }
 
         /* 循序進入的延遲時間設定 */
@@ -380,7 +410,7 @@
         <div class="signage-container">
 
             <!-- HEADER BAR -->
-            <header class="header-bar">
+            <header id="mainHeader" class="header-bar">
                 <!-- Row 1: Title & Real-time Clock -->
                 <div class="header-row1">
                     <div class="header-title-box">
@@ -524,6 +554,7 @@
         let boardTitle = "課程教室公告";
         let marqueeText = "歡迎蒞臨！請全程佩戴口罩並保持社交距離。";
         let carouselIntervalSec = 8;
+        let showHeader = true;
 
         function parseCSV(text) {
             var lines = text.split('\n');
@@ -544,6 +575,18 @@
             return result;
         }
 
+        function applyHeaderVisibility(visible) {
+            var headerElem = document.getElementById('mainHeader');
+            var cardContainer = document.getElementById('cardContainer');
+            if (visible) {
+                headerElem.classList.remove('is-hidden');
+                cardContainer.classList.remove('expand-mode');
+            } else {
+                headerElem.classList.add('is-hidden');
+                cardContainer.classList.add('expand-mode');
+            }
+        }
+
         function fetchScheduleFromGoogleSheet() {
             if (CONFIG_CSV_URL && CONFIG_CSV_URL.indexOf("YOUR_CONFIG") === -1) {
                 var xhrConfig = new XMLHttpRequest();
@@ -556,9 +599,13 @@
                             if (row.Key === 'boardTitle') boardTitle = row.Value;
                             if (row.Key === 'marqueeText') marqueeText = row.Value;
                             if (row.Key === 'carouselIntervalSec') carouselIntervalSec = parseInt(row.Value) || 8;
+                            if (row.Key === 'showHeader') {
+                                showHeader = String(row.Value).toLowerCase() !== 'false';
+                            }
                         }
                         document.getElementById('boardTitle').innerText = boardTitle;
                         document.getElementById('marqueeText').innerText = marqueeText;
+                        applyHeaderVisibility(showHeader);
                     }
                 };
                 xhrConfig.send();
