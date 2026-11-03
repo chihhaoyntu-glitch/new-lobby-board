@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>課程教室公告看板 (總開關絕對服從修復版)</title>
+    <title>課程教室公告看板 (開關絕對服從版)</title>
     <style>
         /* --- 基礎鎖定與重置 --- */
         * {
@@ -539,6 +539,7 @@
         let bannerIntervalSec = 10;
         let showHeader = true;
 
+        // 預設開關與時段
         let enableCourses = true;
         let courseStartTime = "";
         let courseEndTime = "";
@@ -569,12 +570,14 @@
         function applyHeaderVisibility(visible) {
             var headerElem = document.getElementById('mainHeader');
             var cardContainer = document.getElementById('cardContainer');
+            var bannerContainer = document.getElementById('bannerContainer');
             if (visible) {
                 headerElem.classList.remove('is-hidden');
                 cardContainer.classList.remove('expand-mode');
             } else {
                 headerElem.classList.add('is-hidden');
                 cardContainer.classList.add('expand-mode');
+                bannerContainer.classList.add('expand-mode');
             }
         }
 
@@ -599,7 +602,7 @@
         function isCurrentTimeInWindow(startStr, endStr) {
             var startMins = parseMinutes(startStr);
             var endMins = parseMinutes(endStr);
-            if (startMins === -1 || endMins === -1) return true;
+            if (startMins === -1 || endMins === -1) return true; // 沒填就代表全天
 
             var now = new Date();
             var currentMins = now.getHours() * 60 + now.getMinutes();
@@ -613,6 +616,7 @@
 
         function isBannerActive(banner) {
             var now = new Date();
+
             if (banner.startDate && banner.startDate.trim() !== '') {
                 var todayStr = now.getFullYear() + '-' +
                     String(now.getMonth() + 1).padStart(2, '0') + '-' +
@@ -625,12 +629,15 @@
                     String(now.getDate()).padStart(2, '0');
                 if (todayStr > banner.endDate.trim()) return false;
             }
+
             if (banner.daysOfWeek && banner.daysOfWeek.trim() !== '') {
                 var currentDay = String(now.getDay());
                 var allowedDays = banner.daysOfWeek.split(',').map(function(d) { return d.trim(); });
                 if (allowedDays.indexOf(currentDay) === -1) return false;
             }
+
             if (!isCurrentTimeInWindow(banner.startTime, banner.endTime)) return false;
+
             return true;
         }
 
@@ -695,6 +702,7 @@
                             }
                         }
                         rawBannerList = newBanners;
+                        startMasterControl();
                     }
                 };
                 xhrBanners.send();
@@ -789,27 +797,32 @@
             });
         }
 
-        // --- 絕對服從總控核心 (修復開關強搶畫面問題) ---
+        // ==========================================
+        // 🎯 核心主控邏輯：完全聽從開關與時段！
+        // ==========================================
         function startMasterControl() {
             stopMainTimer();
 
+            // 1. 檢查課表是否被允許運作
             var courseActive = enableCourses && isCurrentTimeInWindow(courseStartTime, courseEndTime);
+            
+            // 2. 檢查圖片是否被允許運作，且是否有符合條件的圖片
             var activeBanners = getActiveBanners();
             var bannerActive = enableBanners && isCurrentTimeInWindow(bannerStartTime, bannerEndTime) && (activeBanners.length > 0);
 
-            // 嚴格依照總開關與時段決定：
-            if (courseActive && !bannerActive) {
-                // 只有課表允許 ➔ 純播課表
+            // 3. 嚴格判定優先權與排程
+            if (courseActive && bannerActive) {
+                // 兩者同時允許：雙軌交替輪播（播完一輪課表換圖片，播完一輪圖片換課表）
+                renderBoard();
+            } else if (courseActive && !bannerActive) {
+                // 只有課表允許：純跑課表
                 renderBoard();
             } else if (!courseActive && bannerActive) {
-                // 只有圖片允許（包含課表被設為 false 的情況） ➔ 純播圖片！
+                // 只有圖片允許（例如你把課表關掉）：直接純跑圖片！不准碰課表！
                 renderBannerLoop();
-            } else if (courseActive && bannerActive) {
-                // 兩者皆允許 ➔ 雙軌交替輪播
-                renderBoard();
             } else {
-                // 兩者皆不允許（或皆關閉）➔ 預設顯示空白或停留在圖片/課表最後狀態，不強搶
-                renderBannerLoop();
+                // 兩者皆被關閉或不在時段：預設顯示空白或課表提示
+                renderBoard();
             }
         }
 
@@ -820,15 +833,9 @@
             var activeBanners = getActiveBanners();
             var bannerActive = enableBanners && isCurrentTimeInWindow(bannerStartTime, bannerEndTime) && (activeBanners.length > 0);
 
-            // 如果此時課表開關被關閉或時間已過，直接強制轉台去播圖片！
-            if (!courseActive) {
-                if (bannerActive) {
-                    renderBannerLoop();
-                } else {
-                    // 如果連圖片也不能播，就切到圖片容器讓它顯示空白或不動作
-                    document.getElementById('cardContainer').style.display = 'none';
-                    document.getElementById('bannerContainer').style.display = 'block';
-                }
+            // 🔴 關鍵防呆：如果此時課表開關或時段不成立，直接強制跳轉去跑圖片，絕對不渲染課表！
+            if (!courseActive && bannerActive) {
+                renderBannerLoop();
                 return;
             }
 
@@ -838,6 +845,7 @@
             var cardContainer = document.getElementById('cardContainer');
             var bannerContainer = document.getElementById('bannerContainer');
 
+            // 課表播完一輪了，若圖片也允許，切換去圖片
             if (currentPage >= totalPages) {
                 currentPage = 0;
                 if (bannerActive) {
@@ -903,20 +911,19 @@
             var cardContainer = document.getElementById('cardContainer');
             var bannerContainer = document.getElementById('bannerContainer');
 
-            // 如果圖片功能被關閉或沒有圖片
+            // 🔴 關鍵防呆：如果圖片被關閉或沒圖可播，但課表允許，切回課表
             if (!bannerActive || activeBanners.length === 0) {
                 if (courseActive) {
                     currentPage = 0;
                     renderBoard();
-                } else {
-                    bannerContainer.style.display = 'none';
-                    cardContainer.style.display = 'none';
+                    return;
                 }
-                return;
             }
 
+            // 圖片播完一輪了
             if (currentBannerIndex >= activeBanners.length) {
                 currentBannerIndex = 0;
+                // 如果此時課表也允許，切回課表交替；否繼續播圖片
                 if (courseActive) {
                     currentPage = 0;
                     renderBoard();
