@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>課程教室公告看板 (雲端控制動態 Header 版)</title>
+    <title>課程教室公告看板 (雲端控制動態 Header 完全體版)</title>
     <style>
         /* --- 基礎鎖定與重置 --- */
         * {
@@ -175,7 +175,7 @@
             align-items: center;
             gap: 6px;
             background-color: #fef3c7;
-            border: 2px solid #fbbf24;
+            border: 2.5px solid #fbbf24;
             color: #78350f;
             font-weight: 900;
             font-size: 13px;
@@ -192,7 +192,7 @@
             padding: 0 4px;
         }
 
-        /* --- 4 個卡片欄位 (水彩風格 + 換頁漸顯動畫) --- */
+        /* --- 4 個卡片欄位 (水彩風格) --- */
         .card-container {
             width: 100%;
             flex: 1;
@@ -224,38 +224,19 @@
             padding: 14px 24px;
         }
 
-        .card-container.expand-mode .time-text {
-            font-size: 26px;
-        }
+        .card-container.expand-mode .time-text { font-size: 26px; }
+        .card-container.expand-mode .course-name { font-size: 30px; }
+        .card-container.expand-mode .teacher-name { font-size: 20px; }
+        .card-container.expand-mode .room-badge { font-size: 26px; padding: 10px 22px; }
 
-        .card-container.expand-mode .course-name {
-            font-size: 30px;
-        }
-
-        .card-container.expand-mode .teacher-name {
-            font-size: 20px;
-        }
-
-        .card-container.expand-mode .room-badge {
-            font-size: 26px;
-            padding: 10px 22px;
-        }
-
-        /* 循序進入的延遲時間設定 */
         .watercolor-card:nth-child(1) { animation-delay: 0.05s; }
         .watercolor-card:nth-child(2) { animation-delay: 0.12s; }
         .watercolor-card:nth-child(3) { animation-delay: 0.19s; }
         .watercolor-card:nth-child(4) { animation-delay: 0.26s; }
 
         @keyframes cardFadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(8px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .bg-cardMint { background-color: #a2e3c4; }
@@ -405,13 +386,11 @@
 </head>
 <body>
 
-    <!-- 1080x730 畫布容器 -->
     <div id="scaleWrapper" class="signage-scale-wrapper">
         <div class="signage-container">
 
             <!-- HEADER BAR -->
             <header id="mainHeader" class="header-bar">
-                <!-- Row 1: Title & Real-time Clock -->
                 <div class="header-row1">
                     <div class="header-title-box">
                         <div class="icon-badge">📢</div>
@@ -423,7 +402,6 @@
                     </div>
                 </div>
 
-                <!-- Row 2: Day Selector & Pagination -->
                 <div class="header-row2">
                     <div id="daySelector" class="day-selector"></div>
 
@@ -437,7 +415,6 @@
 
             <!-- MAIN DISPLAY: 4 CARDS -->
             <main id="cardContainer" class="card-container">
-                <!-- CARD 0 -->
                 <div id="card-0" class="watercolor-card bg-cardMint">
                     <div class="time-box">
                         <span id="time-0" class="time-text">00:00 - 00:00</span>
@@ -446,18 +423,12 @@
                     <div class="info-box">
                         <div class="course-details">
                             <div id="name-0" class="course-name">--</div>
-                            <div class="teacher-name">
-                                <span>👤</span>
-                                <span id="teacher-0">--</span>
-                            </div>
+                            <div class="teacher-name"><span>👤</span><span id="teacher-0">--</span></div>
                         </div>
-                        <div class="room-badge">
-                            🏫 <span id="room-0">--</span>
-                        </div>
+                        <div class="room-badge">🏫 <span id="room-0">--</span></div>
                     </div>
                 </div>
 
-                <!-- CARD 1 -->
                 <div id="card-1" class="watercolor-card bg-cardBlue">
                     <div class="time-box">
                         <span id="time-1" class="time-text">00:00 - 00:00</span>
@@ -466,18 +437,12 @@
                     <div class="info-box">
                         <div class="course-details">
                             <div id="name-1" class="course-name">--</div>
-                            <div class="teacher-name">
-                                <span>👤</span>
-                                <span id="teacher-1">--</span>
-                            </div>
+                            <div class="teacher-name"><span>👤</span><span id="teacher-1">--</span></div>
                         </div>
-                        <div class="room-badge">
-                            🏫 <span id="room-1">--</span>
-                        </div>
+                        <div class="room-badge">🏫 <span id="room-1">--</span></div>
                     </div>
                 </div>
 
-                <!-- CARD 2 -->
                 <div id="card-2" class="watercolor-card bg-cardYellow">
                     <div class="time-box">
                         <span id="time-2" class="time-text">00:00 - 00:00</span>
@@ -486,18 +451,12 @@
                     <div class="info-box">
                         <div class="course-details">
                             <div id="name-2" class="course-name">--</div>
-                            <div class="teacher-name">
-                                <span>👤</span>
-                                <span id="teacher-2">--</span>
-                            </div>
+                            <div class="teacher-name"><span>👤</span><span id="teacher-2">--</span></div>
                         </div>
-                        <div class="room-badge">
-                            🏫 <span id="room-2">--</span>
-                        </div>
+                        <div class="room-badge">🏫 <span id="room-2">--</span></div>
                     </div>
                 </div>
 
-                <!-- CARD 3 -->
                 <div id="card-3" class="watercolor-card bg-cardRed">
                     <div class="time-box">
                         <span id="time-3" class="time-text">00:00 - 00:00</span>
@@ -506,14 +465,9 @@
                     <div class="info-box">
                         <div class="course-details">
                             <div id="name-3" class="course-name">--</div>
-                            <div class="teacher-name">
-                                <span>👤</span>
-                                <span id="teacher-3">--</span>
-                            </div>
+                            <div class="teacher-name"><span>👤</span><span id="teacher-3">--</span></div>
                         </div>
-                        <div class="room-badge">
-                            🏫 <span id="room-3">--</span>
-                        </div>
+                        <div class="room-badge">🏫 <span id="room-3">--</span></div>
                     </div>
                 </div>
             </main>
@@ -522,9 +476,7 @@
             <footer class="footer-bar">
                 <span class="marquee-label">📢 公告</span>
                 <div class="marquee-container">
-                    <div id="marqueeText" class="marquee-track">
-                        載入中，請稍候...
-                    </div>
+                    <div id="marqueeText" class="marquee-track">載入中，請稍候...</div>
                 </div>
             </footer>
 
@@ -538,19 +490,15 @@
         const CONFIG_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTkOoAr-xdQSYp8U6yyedy5uUypUlQVQiPSiVzLd8lAEmfQacXXY2g8hNEjcmeObgxRcguKX7xsr34V/pub?gid=962273106&single=true&output=csv";
 
         const DAYS = [
-            { id: 1, name: '一' },
-            { id: 2, name: '二' },
-            { id: 3, name: '三' },
-            { id: 4, name: '四' },
-            { id: 5, name: '五' },
-            { id: 6, name: '六' },
-            { id: 0, name: '日' }
+            { id: 1, name: '一' }, { id: 2, name: '二' }, { id: 3, name: '三' },
+            { id: 4, name: '四' }, { id: 5, name: '五' }, { id: 6, name: '六' }, { id: 0, name: '日' }
         ];
 
         let currentSchedule = { 0:[], 1:[], 2:[], 3:[], 4:[], 5:[], 6:[] };
         let activeDay = new Date().getDay();
         let currentPage = 0;
         let carouselTimer = null;
+        
         let boardTitle = "課程教室公告";
         let marqueeText = "歡迎蒞臨！請全程佩戴口罩並保持社交距離。";
         let carouselIntervalSec = 8;
@@ -575,6 +523,7 @@
             return result;
         }
 
+        // 控制 Header 顯示/隱藏與卡片放大的靈魂函式！
         function applyHeaderVisibility(visible) {
             var headerElem = document.getElementById('mainHeader');
             var cardContainer = document.getElementById('cardContainer');
@@ -588,6 +537,7 @@
         }
 
         function fetchScheduleFromGoogleSheet() {
+            // 1. 抓取 Config 參數 (包含 showHeader 開關判斷)
             if (CONFIG_CSV_URL && CONFIG_CSV_URL.indexOf("YOUR_CONFIG") === -1) {
                 var xhrConfig = new XMLHttpRequest();
                 xhrConfig.open('GET', CONFIG_CSV_URL, true);
@@ -605,12 +555,13 @@
                         }
                         document.getElementById('boardTitle').innerText = boardTitle;
                         document.getElementById('marqueeText').innerText = marqueeText;
-                        applyHeaderVisibility(showHeader);
+                        applyHeaderVisibility(showHeader); // 即時套用 Header 隱藏/顯示
                     }
                 };
                 xhrConfig.send();
             }
 
+            // 2. 抓取 Courses 課表
             if (COURSES_CSV_URL && COURSES_CSV_URL.indexOf("YOUR_COURSES") === -1) {
                 var xhrCourses = new XMLHttpRequest();
                 xhrCourses.open('GET', COURSES_CSV_URL, true);
@@ -690,9 +641,7 @@
                 btn.className = 'day-btn' + (isSelected ? ' active' : '') + (isToday && !isSelected ? ' today' : '');
                 
                 var dayLabel = '週' + day.name;
-                if (isToday) {
-                    dayLabel += ' <span class="today-badge">今日</span>';
-                }
+                if (isToday) dayLabel += ' <span class="today-badge">今日</span>';
 
                 btn.innerHTML = dayLabel;
                 btn.onclick = function() {
@@ -728,10 +677,8 @@
                 if (item) {
                     card.style.visibility = 'visible';
                     card.style.display = 'flex';
-                    
-                    // 重新觸發 CSS 漸顯動畫技巧
                     card.style.animation = 'none';
-                    card.offsetHeight; /* trigger reflow */
+                    card.offsetHeight;
                     card.style.animation = 'cardFadeIn 0.5s ease forwards';
                     card.style.animationDelay = (i * 0.07) + 's';
 
@@ -793,15 +740,7 @@
 
         function updateSignageScale() {
             var wrapper = document.getElementById('scaleWrapper');
-            var targetWidth = 1080;
-            var targetHeight = 730;
-            var windowWidth = window.innerWidth;
-            var windowHeight = window.innerHeight;
-
-            var scaleX = windowWidth / targetWidth;
-            var scaleY = windowHeight / targetHeight;
-            var scale = Math.min(scaleX, scaleY);
-
+            var scale = Math.min(window.innerWidth / 1080, window.innerHeight / 730);
             wrapper.style.transform = 'scale(' + scale + ')';
         }
 
@@ -814,9 +753,7 @@
             setInterval(fetchScheduleFromGoogleSheet, 300000);
         };
 
-        window.onresize = function() {
-            updateSignageScale();
-        };
+        window.onresize = updateSignageScale;
     </script>
 </body>
 </html>
