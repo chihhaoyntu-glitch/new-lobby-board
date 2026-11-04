@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>課程教室公告看板 (步驟2：課表總開關與時段設定)</title>
+    <title>課程教室公告看板 (步驟2：快取即時同步加強版)</title>
     <style>
         /* --- 基礎鎖定與重置 --- */
         * {
@@ -541,9 +541,16 @@
         // 步驟 1：課表總開關
         let enableCourses = true;
 
-        // 【步驟 2 新增】：課表時段設定變數（預設空字串代表全天開放）
+        // 步驟 2：課表時段設定變數
         let courseStartTime = "";
         let courseEndTime = "";
+
+        // 快取破壞工具：替網址加上獨一無二的時間戳記，強迫瀏覽器抓最新 CSV！
+        function buildFreshUrl(url) {
+            if (!url) return '';
+            var timestamp = new Date().getTime();
+            return url + (url.indexOf('?') !== -1 ? '&_cb=' : '?_cb=') + timestamp;
+        }
 
         function parseCSV(text) {
             var lines = text.split('\n');
@@ -585,7 +592,6 @@
             return url;
         }
 
-        // 【步驟 2 新增】：將時間字串（如 "16:00"）轉為當日分鐘數的防呆工具
         function parseMinutes(timeStr) {
             if (!timeStr || typeof timeStr !== 'string' || timeStr.indexOf(':') === -1) return -1;
             var parts = timeStr.trim().split(':');
@@ -595,11 +601,9 @@
             return h * 60 + m;
         }
 
-        // 【步驟 2 新增】：檢查當前時間是否落在課表允許時段內
         function isCourseTimeActive() {
             var startMins = parseMinutes(courseStartTime);
             var endMins = parseMinutes(courseEndTime);
-            // 如果沒填開始或結束時間，代表全天允許
             if (startMins === -1 || endMins === -1) return true;
 
             var now = new Date();
@@ -608,16 +612,15 @@
             if (startMins <= endMins) {
                 return currentMins >= startMins && currentMins < endMins;
             } else {
-                // 跨夜時段支援
                 return currentMins >= startMins || currentMins < endMins;
             }
         }
 
         function fetchAllData() {
-            // 1. 抓取 Config
+            // 1. 抓取 Config (使用快取破壞網址)
             if (CONFIG_CSV_URL && CONFIG_CSV_URL.indexOf("YOUR_CONFIG") === -1) {
                 var xhrConfig = new XMLHttpRequest();
-                xhrConfig.open('GET', CONFIG_CSV_URL, true);
+                xhrConfig.open('GET', buildFreshUrl(CONFIG_CSV_URL), true);
                 xhrConfig.onreadystatechange = function() {
                     if (xhrConfig.readyState === 4 && xhrConfig.status === 200) {
                         var configData = parseCSV(xhrConfig.responseText);
@@ -636,7 +639,6 @@
                             if (k === 'enableCourses') {
                                 enableCourses = String(v).toLowerCase() !== 'false';
                             }
-                            // 【步驟 2 新增】：讀取課表時段設定
                             if (k === 'courseStartTime') courseStartTime = v;
                             if (k === 'courseEndTime') courseEndTime = v;
                         }
@@ -649,10 +651,10 @@
                 xhrConfig.send();
             }
 
-            // 2. 抓取 Banners 圖片清單
+            // 2. 抓取 Banners 圖片清單 (使用快取破壞網址)
             if (BANNERS_CSV_URL && BANNERS_CSV_URL.indexOf("YOUR_BANNERS") === -1) {
                 var xhrBanners = new XMLHttpRequest();
-                xhrBanners.open('GET', BANNERS_CSV_URL, true);
+                xhrBanners.open('GET', buildFreshUrl(BANNERS_CSV_URL), true);
                 xhrBanners.onreadystatechange = function() {
                     if (xhrBanners.readyState === 4 && xhrBanners.status === 200) {
                         var bannersData = parseCSV(xhrBanners.responseText);
@@ -672,10 +674,10 @@
                 xhrBanners.send();
             }
 
-            // 3. 抓取 Courses
+            // 3. 抓取 Courses (使用快取破壞網址)
             if (COURSES_CSV_URL && COURSES_CSV_URL.indexOf("YOUR_COURSES") === -1) {
                 var xhrCourses = new XMLHttpRequest();
-                xhrCourses.open('GET', COURSES_CSV_URL, true);
+                xhrCourses.open('GET', buildFreshUrl(COURSES_CSV_URL), true);
                 xhrCourses.onreadystatechange = function() {
                     if (xhrCourses.readyState === 4 && xhrCourses.status === 200) {
                         var coursesData = parseCSV(xhrCourses.responseText);
@@ -766,27 +768,22 @@
             });
         }
 
-        // 【步驟 2 核心路由】：結合「總開關」與「時段設定」的雙重判斷
         function routeDisplay() {
             stopMainTimer();
 
-            // 判定課表是否應該被允許播放：總開關必須為 true 且必須在指定時段內
             var courseAllowed = enableCourses && isCourseTimeActive();
 
-            // 如果課表不被允許（被總開關關掉，或不在時段內），且有圖片可以播 ➔ 強制切去播圖片！
             if (!courseAllowed && bannerList.length > 0) {
                 renderBannerLoop();
                 return;
             }
 
-            // 否則正常走課表輪播
             renderBoard();
         }
 
         function renderBoard() {
             stopMainTimer();
 
-            // 防呆檢查
             var courseAllowed = enableCourses && isCourseTimeActive();
             if (!courseAllowed && bannerList.length > 0) {
                 renderBannerLoop();
@@ -870,7 +867,6 @@
 
             if (currentBannerIndex >= bannerList.length) {
                 currentBannerIndex = 0;
-                // 當圖片播完一輪時，重新檢查課表是否允許播放；若允許則切回課表交替
                 var courseAllowed = enableCourses && isCourseTimeActive();
                 if (courseAllowed) {
                     currentPage = 0;
