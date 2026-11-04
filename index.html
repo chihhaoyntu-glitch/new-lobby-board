@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>課程教室公告看板 (步驟5：圖片精細排程完整版)</title>
+    <title>課程教室公告看板 (步驟5：單張圖片精細排程完整版)</title>
     <style>
         /* --- 基礎鎖定與重置 --- */
         * {
@@ -525,7 +525,7 @@
         ];
 
         let currentSchedule = { 0:[], 1:[], 2:[], 3:[], 4:[], 5:[], 6:[] };
-        let rawBannerList = []; // 原始抓下來的完整圖片清單
+        let rawBannerList = []; // 原始讀取到的所有 Banners
         let currentBannerIndex = 0;
         
         let activeDay = new Date().getDay();
@@ -538,12 +538,12 @@
         let bannerIntervalSec = 10;
         let showHeader = true;
 
-        // 步驟 1 & 2：課表總開關與時段
+        // 課表總開關與時段
         let enableCourses = true;
         let courseStartTime = "";
         let courseEndTime = "";
 
-        // 步驟 3 & 4：Banners 總開關與時段
+        // Banners 總開關與整體時段
         let enableBanners = true;
         let bannerStartTime = "";
         let bannerEndTime = "";
@@ -603,6 +603,7 @@
             return h * 60 + m;
         }
 
+        // 檢查課表整體時段
         function isCourseTimeActive() {
             var startMins = parseMinutes(courseStartTime);
             var endMins = parseMinutes(courseEndTime);
@@ -618,6 +619,7 @@
             }
         }
 
+        // 檢查 Banners 整體時段
         function isBannerTimeActive() {
             var startMins = parseMinutes(bannerStartTime);
             var endMins = parseMinutes(bannerEndTime);
@@ -633,49 +635,47 @@
             }
         }
 
-        // ==========================================
-        // 🎯 【步驟 5 核心】：單張圖片的細粒度排程判定邏輯
-        // ==========================================
-        function isSingleBannerActive(banner) {
-            var now = new Date();
-
-            // 1. 檢查日期區間 (StartDate / EndDate，格式 YYYY-MM-DD)
-            var todayStr = now.getFullYear() + '-' +
-                String(now.getMonth() + 1).padStart(2, '0') + '-' +
-                String(now.getDate()).padStart(2, '0');
-
-            if (banner.startDate && banner.startDate.trim() !== '') {
-                if (todayStr < banner.startDate.trim()) return false; // 還沒到生效日
-            }
-            if (banner.endDate && banner.endDate.trim() !== '') {
-                if (todayStr > banner.endDate.trim()) return false; // 已經過期
-            }
-
-            // 2. 檢查星期區間 (DaysOfWeek，例如 "1,2,3,4,5" 或 "0,6")
-            if (banner.daysOfWeek && banner.daysOfWeek.trim() !== '') {
-                var currentDay = String(now.getDay()); // 0是週日，1是週一...
-                var allowedDays = banner.daysOfWeek.split(',').map(function(d) { return d.trim(); });
-                if (allowedDays.indexOf(currentDay) === -1) return false; // 今天不在允許的星期內
-            }
-
-            // 3. 檢查單張圖片當日時間區間 (StartTime / EndTime，格式 HH:MM)
-            var startMins = parseMinutes(banner.startTime);
-            var endMins = parseMinutes(banner.endTime);
-            if (startMins !== -1 && endMins !== -1) {
-                var currentMins = now.getHours() * 60 + now.getMinutes();
-                if (startMins <= endMins) {
-                    if (currentMins < startMins || currentMins >= endMins) return false;
-                } else {
-                    if (currentMins < startMins && currentMins >= endMins) return false;
-                }
-            }
-
-            return true; // 所有條件符合！
-        }
-
-        // 取得當下時間點「合格可播放」的圖片清單
+        // 【步驟 5 核心靈魂】：即時過濾符合「日期」、「時間」、「星期」的單張圖片
         function getActiveBanners() {
-            return rawBannerList.filter(isSingleBannerActive);
+            var now = new Date();
+            var todayStr = now.getFullYear() + '/' + 
+                           (now.getMonth() + 1 < 10 ? '0' : '') + (now.getMonth() + 1) + '/' + 
+                           (now.getDate() < 10 ? '0' : '') + now.getDate();
+            var currentMins = now.getHours() * 60 + now.getMinutes();
+            var currentDayOfWeek = String(now.getDay()); // '0' 代表週日, '1'~'6' 代表週一至六
+
+            var activeList = [];
+
+            for (var i = 0; i < rawBannerList.length; i++) {
+                var b = rawBannerList[i];
+
+                // 1. 日期判斷 (StartDate ~ EndDate)
+                if (b.startDate && todayStr < b.startDate) continue;
+                if (b.endDate && todayStr > b.endDate) continue;
+
+                // 2. 星期判斷 (DaysOfWeek，如 "1,2,3,4,5")
+                if (b.daysOfWeek && b.daysOfWeek.trim() !== '') {
+                    var allowedDays = b.daysOfWeek.split(',').map(function(d){ return d.trim(); });
+                    if (allowedDays.indexOf(currentDayOfWeek) === -1) continue;
+                }
+
+                // 3. 每日時間判斷 (StartTime ~ EndTime)
+                var startMins = parseMinutes(b.startTime);
+                var endMins = parseMinutes(b.endTime);
+                if (startMins !== -1 && endMins !== -1) {
+                    if (startMins <= endMins) {
+                        if (currentMins < startMins || currentMins >= endMins) continue;
+                    } else {
+                        // 支援跨夜
+                        if (currentMins < startMins && currentMins >= endMins) continue;
+                    }
+                }
+
+                // 三維條件皆符合，加入播出一款！
+                activeList.push(b);
+            }
+
+            return activeList;
         }
 
         function fetchAllData() {
@@ -714,7 +714,7 @@
                 xhrConfig.send();
             }
 
-            // 2. 抓取 Banners 圖片清單 (【步驟 5 擴充】：讀取每張圖的日期、時間、星期設定)
+            // 2. 抓取 Banners 圖片清單 (【步驟 5 新增】：解析單張圖片排程欄位)
             if (BANNERS_CSV_URL && BANNERS_CSV_URL.indexOf("YOUR_BANNERS") === -1) {
                 var xhrBanners = new XMLHttpRequest();
                 xhrBanners.open('GET', buildFreshUrl(BANNERS_CSV_URL), true);
@@ -728,16 +728,16 @@
                                 newBanners.push({
                                     url: convertDriveUrl(item.ImageUrl.trim()),
                                     duration: parseInt(item.DurationSec) || bannerIntervalSec,
-                                    startDate: item.StartDate || '',
-                                    endDate: item.EndDate || '',
-                                    startTime: item.StartTime || '',
-                                    endTime: item.EndTime || '',
-                                    daysOfWeek: item.DaysOfWeek || ''
+                                    // 讀取單圖的精細排程欄位 (若日期有斜線統一洗成 YYYY/MM/DD)
+                                    startDate: item.StartDate ? item.StartDate.trim().replace(/-/g, '/') : '',
+                                    endDate: item.EndDate ? item.EndDate.trim().replace(/-/g, '/') : '',
+                                    startTime: item.StartTime ? item.StartTime.trim() : '',
+                                    endTime: item.EndTime ? item.EndTime.trim() : '',
+                                    daysOfWeek: item.DaysOfWeek ? item.DaysOfWeek.trim() : ''
                                 });
                             }
                         }
                         rawBannerList = newBanners;
-                        routeDisplay();
                     }
                 };
                 xhrBanners.send();
@@ -837,14 +837,15 @@
             });
         }
 
-        // 總控路由：結合篩選後的合格圖片清單
+        // 總控路由判斷
         function routeDisplay() {
             stopMainTimer();
 
             var courseAllowed = enableCourses && isCourseTimeActive();
-            var activeBanners = getActiveBanners();
-            var bannerAllowed = enableBanners && isBannerTimeActive() && (activeBanners.length > 0);
+            var validBanners = getActiveBanners();
+            var bannerAllowed = enableBanners && isBannerTimeActive() && (validBanners.length > 0);
 
+            // 如果課表禁止，但圖片允許且有符合條件的圖片 ➔ 直奔圖片！
             if (!courseAllowed && bannerAllowed) {
                 renderBannerLoop();
                 return;
@@ -857,8 +858,8 @@
             stopMainTimer();
 
             var courseAllowed = enableCourses && isCourseTimeActive();
-            var activeBanners = getActiveBanners();
-            var bannerAllowed = enableBanners && isBannerTimeActive() && (activeBanners.length > 0);
+            var validBanners = getActiveBanners();
+            var bannerAllowed = enableBanners && isBannerTimeActive() && (validBanners.length > 0);
 
             if (!courseAllowed && bannerAllowed) {
                 renderBannerLoop();
@@ -873,6 +874,7 @@
 
             if (currentPage >= totalPages) {
                 currentPage = 0;
+                // 當課表播完一輪，若 Banners 開啟、在 Banners 時段內、且「當前有符合條件的圖片」➔ 切去圖片！
                 if (bannerAllowed) {
                     renderBannerLoop();
                     return;
@@ -930,10 +932,10 @@
             stopMainTimer();
 
             var courseAllowed = enableCourses && isCourseTimeActive();
-            var activeBanners = getActiveBanners();
-            var bannerAllowed = enableBanners && isBannerTimeActive() && (activeBanners.length > 0);
+            var validBanners = getActiveBanners(); // 動態取得當前時間合法的圖片清單
+            var bannerAllowed = enableBanners && isBannerTimeActive() && (validBanners.length > 0);
 
-            // 如果沒有符合條件的圖片，直接跳回課表
+            // 防呆：如果此刻沒有任何合法的圖片可以播，切回課表
             if (!bannerAllowed) {
                 currentPage = 0;
                 renderBoard();
@@ -943,9 +945,10 @@
             var cardContainer = document.getElementById('cardContainer');
             var bannerContainer = document.getElementById('bannerContainer');
 
-            // 確保索引不會超出當前篩選後的圖片數量
-            if (currentBannerIndex >= activeBanners.length) {
+            // 如果索引超出目前合法的圖片數量 ➔ 代表合法的圖片播完一輪了！
+            if (currentBannerIndex >= validBanners.length) {
                 currentBannerIndex = 0;
+                // 如果課表此時允許播放，切回課表交替
                 if (courseAllowed) {
                     currentPage = 0;
                     renderBoard();
@@ -957,7 +960,7 @@
             bannerContainer.style.display = 'block';
             applyHeaderVisibility(false);
 
-            var item = activeBanners[currentBannerIndex];
+            var item = validBanners[currentBannerIndex];
             document.getElementById('bannerImg').src = item.url;
 
             mainTimer = setTimeout(function() {
