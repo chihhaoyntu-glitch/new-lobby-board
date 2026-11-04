@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>課程教室公告看板 (步驟5：超強防呆修正版)</title>
+    <title>課程教室公告看板 (終極完美修正版)</title>
     <style>
         /* --- 基礎鎖定與重置 --- */
         * {
@@ -324,7 +324,7 @@
             color: #ffffff;
             padding: 8px 18px;
             border-radius: 12px;
-            border: 2.5px solid #334155;
+            border: 3.5px solid #334155;
             font-size: 22px;
             font-weight: 900;
             box-shadow: 0px 4px 0px rgba(0, 0, 0, 0.12);
@@ -554,7 +554,6 @@
             return url + (url.indexOf('?') !== -1 ? '&_cb=' : '?_cb=') + timestamp;
         }
 
-        // CSV 解析工具，帶有欄位去除雙引號與空格防呆
         function parseCSV(text) {
             var lines = text.split('\n');
             var result = [];
@@ -596,7 +595,7 @@
         }
 
         function parseMinutes(timeStr) {
-            if (!timeStr || typeof timeStr !== 'string' || timeStr.indexOf(':') === -1) return -1;
+            if (!timeStr || typeof timeStr !== 'string' || timeStr.trim() === '' || timeStr.indexOf(':') === -1) return -1;
             var parts = timeStr.trim().split(':');
             var h = parseInt(parts[0], 10);
             var m = parseInt(parts[1], 10);
@@ -604,9 +603,9 @@
             return h * 60 + m;
         }
 
-        // 安全解析日期字串，統一轉為 YYYY-MM-DD
-        function parseSafeDateStr(dateStr) {
-            if (!dateStr || typeof dateStr !== 'string' || dateStr.trim() === '') return '';
+        // 安全解析日期字串，統一轉為 YYYY-MM-DD 數字比對用
+        function parseSafeDateNum(dateStr) {
+            if (!dateStr || typeof dateStr !== 'string' || dateStr.trim() === '') return 0;
             var cleaned = dateStr.trim().replace(/\//g, '-');
             var parts = cleaned.split('-');
             if (parts.length === 3) {
@@ -614,10 +613,10 @@
                 var m = parseInt(parts[1], 10);
                 var d = parseInt(parts[2], 10);
                 if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
-                    return y + '-' + (m < 10 ? '0' : '') + m + '-' + (d < 10 ? '0' : '') + d;
+                    return y * 10000 + m * 100 + d;
                 }
             }
-            return '';
+            return 0;
         }
 
         function isCourseTimeActive() {
@@ -650,59 +649,73 @@
             }
         }
 
-        // 超強防呆版：動態過濾單張圖片排程
+        // 【終極穩固版】：單張圖片三維排程判定（完美支援單邊留空、混搭與全空）
         function getActiveBanners() {
             var activeList = [];
             try {
                 var now = new Date();
-                var y = now.getFullYear();
-                var m = now.getMonth() + 1;
-                var d = now.getDate();
-                var todayStr = y + '-' + (m < 10 ? '0' : '') + m + '-' + (d < 10 ? '0' : '') + d;
+                var todayNum = now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate();
                 var currentMins = now.getHours() * 60 + now.getMinutes();
-                var currentDayOfWeek = String(now.getDay()); // '0' 代表週日, '1'~'6' 代表週一至六
+                var currentDayOfWeek = String(now.getDay()); // '0'~'6'
 
                 for (var i = 0; i < rawBannerList.length; i++) {
                     var b = rawBannerList[i];
                     try {
-                        // 1. 日期判斷 (StartDate ~ EndDate)
-                        var sDate = parseSafeDateStr(b.startDate);
-                        var eDate = parseSafeDateStr(b.endDate);
-                        if (sDate && todayStr < sDate) continue;
-                        if (eDate && todayStr > eDate) continue;
+                        var passDate = true;
+                        var passDay = true;
+                        var passTime = true;
 
-                        // 2. 星期判斷 (DaysOfWeek)
-                        if (b.daysOfWeek && String(b.daysOfWeek).trim() !== '') {
-                            var allowedDays = String(b.daysOfWeek).split(',').map(function(item){ return item.trim(); });
-                            if (allowedDays.indexOf(currentDayOfWeek) === -1) continue;
-                        }
+                        // 1. 日期範圍判斷 (支援單邊留空)
+                        var sNum = parseSafeDateNum(b.startDate);
+                        var eNum = parseSafeDateNum(b.endDate);
+                        if (sNum > 0 && todayNum < sNum) passDate = false;
+                        if (eNum > 0 && todayNum > eNum) passDate = false;
+                        if (!passDate) continue;
 
-                        // 3. 每日時間判斷 (StartTime ~ EndTime)
-                        var startMins = parseMinutes(b.startTime);
-                        var endMins = parseMinutes(b.endTime);
-                        if (startMins !== -1 && endMins !== -1) {
-                            if (startMins <= endMins) {
-                                if (currentMins < startMins || currentMins >= endMins) continue;
-                            } else {
-                                if (currentMins < startMins && currentMins >= endMins) continue;
+                        // 2. 星期判斷 (DaysOfWeek，支援逗號分隔或單獨數字)
+                        if (b.daysOfWeek && b.daysOfWeek.trim() !== '') {
+                            var allowedDays = b.daysOfWeek.split(',').map(function(item){ return item.trim(); });
+                            if (allowedDays.indexOf(currentDayOfWeek) === -1) {
+                                passDay = false;
                             }
                         }
+                        if (!passDay) continue;
 
+                        // 3. 每日時間判斷 (StartTime ~ EndTime，支援單邊填寫或全空)
+                        var startMins = parseMinutes(b.startTime);
+                        var endMins = parseMinutes(b.endTime);
+                        
+                        if (startMins !== -1 && endMins !== -1) {
+                            if (startMins <= endMins) {
+                                if (currentMins < startMins || currentMins >= endMins) passTime = false;
+                            } else {
+                                if (currentMins < startMins && currentMins >= endMins) passTime = false;
+                            }
+                        } else if (startMins !== -1 && endMins === -1) {
+                            // 只填了開始時間，代表從該時間起至當日結束
+                            if (currentMins < startMins) passTime = false;
+                        } else if (startMins === -1 && endMins !== -1) {
+                            // 只填了結束時間，代表從當日開始至該時間為止
+                            if (currentMins >= endMins) passTime = false;
+                        }
+                        if (!passTime) continue;
+
+                        // 通過所有條件！
                         activeList.push(b);
                     } catch (eInner) {
-                        console.warn("跳過格式有誤的圖片:", b, eInner);
+                        console.warn("單張圖片排程解析跳過:", b);
                     }
                 }
-            } catch (eOuter) {
-                console.error("篩選圖片時發生例外，回傳全部圖片備用:", eOuter);
-                return rawBannerList;
+            } catch (err) {
+                console.error("getActiveBanners 發生例外:", err);
+                return rawBannerList; // 萬一發生意外，回傳原始清單保底
             }
 
             return activeList;
         }
 
         function fetchAllData() {
-            // 1. 抓取 Config
+            // 1. 抓取 Config (獨立防呆，絕不受圖片影響)
             if (CONFIG_CSV_URL && CONFIG_CSV_URL.indexOf("YOUR_CONFIG") === -1) {
                 var xhrConfig = new XMLHttpRequest();
                 xhrConfig.open('GET', buildFreshUrl(CONFIG_CSV_URL), true);
@@ -734,14 +747,14 @@
                             applyHeaderVisibility(showHeader);
                             routeDisplay();
                         } catch (errConfig) {
-                            console.error("解析 Config 失敗:", errConfig);
+                            console.error("Config 解析失敗:", errConfig);
                         }
                     }
                 };
                 xhrConfig.send();
             }
 
-            // 2. 抓取 Banners 圖片清單（超級防呆大小寫與多餘空格）
+            // 2. 抓取 Banners 圖片清單
             if (BANNERS_CSV_URL && BANNERS_CSV_URL.indexOf("YOUR_BANNERS") === -1) {
                 var xhrBanners = new XMLHttpRequest();
                 xhrBanners.open('GET', buildFreshUrl(BANNERS_CSV_URL), true);
@@ -752,8 +765,6 @@
                             var newBanners = [];
                             for (var i = 0; i < bannersData.length; i++) {
                                 var item = bannersData[i];
-
-                                // 抓取不分大小寫的欄位防呆（相容可能打錯大小寫的情況）
                                 var imgUrl = item.ImageUrl || item.imageurl || item.IMAGEURL || '';
                                 var duration = item.DurationSec || item.durationsec || '';
                                 var sDate = item.StartDate || item.startdate || '';
@@ -776,7 +787,7 @@
                             }
                             rawBannerList = newBanners;
                         } catch (errBanners) {
-                            console.error("解析 Banners 失敗:", errBanners);
+                            console.error("Banners 解析失敗:", errBanners);
                         }
                     }
                 };
@@ -809,7 +820,7 @@
                             renderDaySelector();
                             routeDisplay();
                         } catch (errCourses) {
-                            console.error("解析 Courses 失敗:", errCourses);
+                            console.error("Courses 解析失敗:", errCourses);
                         }
                     }
                 };
