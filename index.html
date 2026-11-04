@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>課程教室公告看板 (步驟5：單張圖片精細排程完整版)</title>
+    <title>課程教室公告看板 (步驟5：超強防呆修正版)</title>
     <style>
         /* --- 基礎鎖定與重置 --- */
         * {
@@ -324,7 +324,7 @@
             color: #ffffff;
             padding: 8px 18px;
             border-radius: 12px;
-            border: 3.5px solid #334155;
+            border: 2.5px solid #334155;
             font-size: 22px;
             font-weight: 900;
             box-shadow: 0px 4px 0px rgba(0, 0, 0, 0.12);
@@ -525,7 +525,7 @@
         ];
 
         let currentSchedule = { 0:[], 1:[], 2:[], 3:[], 4:[], 5:[], 6:[] };
-        let rawBannerList = []; // 原始讀取到的所有 Banners
+        let rawBannerList = [];
         let currentBannerIndex = 0;
         
         let activeDay = new Date().getDay();
@@ -554,6 +554,7 @@
             return url + (url.indexOf('?') !== -1 ? '&_cb=' : '?_cb=') + timestamp;
         }
 
+        // CSV 解析工具，帶有欄位去除雙引號與空格防呆
         function parseCSV(text) {
             var lines = text.split('\n');
             var result = [];
@@ -564,9 +565,9 @@
                 var values = lines[i].replace(/\r/g, '').split(',');
                 var obj = {};
                 for (var j = 0; j < headers.length; j++) {
-                    var key = headers[j].trim().replace(/^"|"$/g, '');
+                    var rawKey = headers[j] ? headers[j].trim().replace(/^"|"$/g, '') : '';
                     var val = values[j] ? values[j].trim().replace(/^"|"$/g, '') : '';
-                    obj[key] = val;
+                    if (rawKey) obj[rawKey] = val;
                 }
                 result.push(obj);
             }
@@ -603,7 +604,22 @@
             return h * 60 + m;
         }
 
-        // 檢查課表整體時段
+        // 安全解析日期字串，統一轉為 YYYY-MM-DD
+        function parseSafeDateStr(dateStr) {
+            if (!dateStr || typeof dateStr !== 'string' || dateStr.trim() === '') return '';
+            var cleaned = dateStr.trim().replace(/\//g, '-');
+            var parts = cleaned.split('-');
+            if (parts.length === 3) {
+                var y = parseInt(parts[0], 10);
+                var m = parseInt(parts[1], 10);
+                var d = parseInt(parts[2], 10);
+                if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
+                    return y + '-' + (m < 10 ? '0' : '') + m + '-' + (d < 10 ? '0' : '') + d;
+                }
+            }
+            return '';
+        }
+
         function isCourseTimeActive() {
             var startMins = parseMinutes(courseStartTime);
             var endMins = parseMinutes(courseEndTime);
@@ -619,7 +635,6 @@
             }
         }
 
-        // 檢查 Banners 整體時段
         function isBannerTimeActive() {
             var startMins = parseMinutes(bannerStartTime);
             var endMins = parseMinutes(bannerEndTime);
@@ -635,44 +650,52 @@
             }
         }
 
-        // 【步驟 5 核心靈魂】：即時過濾符合「日期」、「時間」、「星期」的單張圖片
+        // 超強防呆版：動態過濾單張圖片排程
         function getActiveBanners() {
-            var now = new Date();
-            var todayStr = now.getFullYear() + '/' + 
-                           (now.getMonth() + 1 < 10 ? '0' : '') + (now.getMonth() + 1) + '/' + 
-                           (now.getDate() < 10 ? '0' : '') + now.getDate();
-            var currentMins = now.getHours() * 60 + now.getMinutes();
-            var currentDayOfWeek = String(now.getDay()); // '0' 代表週日, '1'~'6' 代表週一至六
-
             var activeList = [];
+            try {
+                var now = new Date();
+                var y = now.getFullYear();
+                var m = now.getMonth() + 1;
+                var d = now.getDate();
+                var todayStr = y + '-' + (m < 10 ? '0' : '') + m + '-' + (d < 10 ? '0' : '') + d;
+                var currentMins = now.getHours() * 60 + now.getMinutes();
+                var currentDayOfWeek = String(now.getDay()); // '0' 代表週日, '1'~'6' 代表週一至六
 
-            for (var i = 0; i < rawBannerList.length; i++) {
-                var b = rawBannerList[i];
+                for (var i = 0; i < rawBannerList.length; i++) {
+                    var b = rawBannerList[i];
+                    try {
+                        // 1. 日期判斷 (StartDate ~ EndDate)
+                        var sDate = parseSafeDateStr(b.startDate);
+                        var eDate = parseSafeDateStr(b.endDate);
+                        if (sDate && todayStr < sDate) continue;
+                        if (eDate && todayStr > eDate) continue;
 
-                // 1. 日期判斷 (StartDate ~ EndDate)
-                if (b.startDate && todayStr < b.startDate) continue;
-                if (b.endDate && todayStr > b.endDate) continue;
+                        // 2. 星期判斷 (DaysOfWeek)
+                        if (b.daysOfWeek && String(b.daysOfWeek).trim() !== '') {
+                            var allowedDays = String(b.daysOfWeek).split(',').map(function(item){ return item.trim(); });
+                            if (allowedDays.indexOf(currentDayOfWeek) === -1) continue;
+                        }
 
-                // 2. 星期判斷 (DaysOfWeek，如 "1,2,3,4,5")
-                if (b.daysOfWeek && b.daysOfWeek.trim() !== '') {
-                    var allowedDays = b.daysOfWeek.split(',').map(function(d){ return d.trim(); });
-                    if (allowedDays.indexOf(currentDayOfWeek) === -1) continue;
-                }
+                        // 3. 每日時間判斷 (StartTime ~ EndTime)
+                        var startMins = parseMinutes(b.startTime);
+                        var endMins = parseMinutes(b.endTime);
+                        if (startMins !== -1 && endMins !== -1) {
+                            if (startMins <= endMins) {
+                                if (currentMins < startMins || currentMins >= endMins) continue;
+                            } else {
+                                if (currentMins < startMins && currentMins >= endMins) continue;
+                            }
+                        }
 
-                // 3. 每日時間判斷 (StartTime ~ EndTime)
-                var startMins = parseMinutes(b.startTime);
-                var endMins = parseMinutes(b.endTime);
-                if (startMins !== -1 && endMins !== -1) {
-                    if (startMins <= endMins) {
-                        if (currentMins < startMins || currentMins >= endMins) continue;
-                    } else {
-                        // 支援跨夜
-                        if (currentMins < startMins && currentMins >= endMins) continue;
+                        activeList.push(b);
+                    } catch (eInner) {
+                        console.warn("跳過格式有誤的圖片:", b, eInner);
                     }
                 }
-
-                // 三維條件皆符合，加入播出一款！
-                activeList.push(b);
+            } catch (eOuter) {
+                console.error("篩選圖片時發生例外，回傳全部圖片備用:", eOuter);
+                return rawBannerList;
             }
 
             return activeList;
@@ -685,59 +708,76 @@
                 xhrConfig.open('GET', buildFreshUrl(CONFIG_CSV_URL), true);
                 xhrConfig.onreadystatechange = function() {
                     if (xhrConfig.readyState === 4 && xhrConfig.status === 200) {
-                        var configData = parseCSV(xhrConfig.responseText);
-                        for (var i = 0; i < configData.length; i++) {
-                            var row = configData[i];
-                            var k = row.Key ? row.Key.trim() : '';
-                            var v = row.Value ? row.Value.trim() : '';
+                        try {
+                            var configData = parseCSV(xhrConfig.responseText);
+                            for (var i = 0; i < configData.length; i++) {
+                                var row = configData[i];
+                                var k = row.Key ? row.Key.trim() : '';
+                                var v = row.Value ? row.Value.trim() : '';
 
-                            if (k === 'boardTitle') boardTitle = v;
-                            if (k === 'marqueeText') marqueeText = v;
-                            if (k === 'carouselIntervalSec') carouselIntervalSec = parseInt(v) || 8;
-                            if (k === 'bannerIntervalSec') bannerIntervalSec = parseInt(v) || 10;
-                            if (k === 'showHeader') showHeader = String(v).toLowerCase() !== 'false';
-                            
-                            if (k === 'enableCourses') enableCourses = String(v).toLowerCase() !== 'false';
-                            if (k === 'courseStartTime') courseStartTime = v;
-                            if (k === 'courseEndTime') courseEndTime = v;
+                                if (k === 'boardTitle') boardTitle = v;
+                                if (k === 'marqueeText') marqueeText = v;
+                                if (k === 'carouselIntervalSec') carouselIntervalSec = parseInt(v) || 8;
+                                if (k === 'bannerIntervalSec') bannerIntervalSec = parseInt(v) || 10;
+                                if (k === 'showHeader') showHeader = String(v).toLowerCase() !== 'false';
+                                
+                                if (k === 'enableCourses') enableCourses = String(v).toLowerCase() !== 'false';
+                                if (k === 'courseStartTime') courseStartTime = v;
+                                if (k === 'courseEndTime') courseEndTime = v;
 
-                            if (k === 'enableBanners') enableBanners = String(v).toLowerCase() !== 'false';
-                            if (k === 'bannerStartTime') bannerStartTime = v;
-                            if (k === 'bannerEndTime') bannerEndTime = v;
+                                if (k === 'enableBanners') enableBanners = String(v).toLowerCase() !== 'false';
+                                if (k === 'bannerStartTime') bannerStartTime = v;
+                                if (k === 'bannerEndTime') bannerEndTime = v;
+                            }
+                            document.getElementById('boardTitle').innerText = boardTitle;
+                            document.getElementById('marqueeText').innerText = marqueeText;
+                            applyHeaderVisibility(showHeader);
+                            routeDisplay();
+                        } catch (errConfig) {
+                            console.error("解析 Config 失敗:", errConfig);
                         }
-                        document.getElementById('boardTitle').innerText = boardTitle;
-                        document.getElementById('marqueeText').innerText = marqueeText;
-                        applyHeaderVisibility(showHeader);
-                        routeDisplay();
                     }
                 };
                 xhrConfig.send();
             }
 
-            // 2. 抓取 Banners 圖片清單 (【步驟 5 新增】：解析單張圖片排程欄位)
+            // 2. 抓取 Banners 圖片清單（超級防呆大小寫與多餘空格）
             if (BANNERS_CSV_URL && BANNERS_CSV_URL.indexOf("YOUR_BANNERS") === -1) {
                 var xhrBanners = new XMLHttpRequest();
                 xhrBanners.open('GET', buildFreshUrl(BANNERS_CSV_URL), true);
                 xhrBanners.onreadystatechange = function() {
                     if (xhrBanners.readyState === 4 && xhrBanners.status === 200) {
-                        var bannersData = parseCSV(xhrBanners.responseText);
-                        var newBanners = [];
-                        for (var i = 0; i < bannersData.length; i++) {
-                            var item = bannersData[i];
-                            if (item.ImageUrl && item.ImageUrl.trim() !== '') {
-                                newBanners.push({
-                                    url: convertDriveUrl(item.ImageUrl.trim()),
-                                    duration: parseInt(item.DurationSec) || bannerIntervalSec,
-                                    // 讀取單圖的精細排程欄位 (若日期有斜線統一洗成 YYYY/MM/DD)
-                                    startDate: item.StartDate ? item.StartDate.trim().replace(/-/g, '/') : '',
-                                    endDate: item.EndDate ? item.EndDate.trim().replace(/-/g, '/') : '',
-                                    startTime: item.StartTime ? item.StartTime.trim() : '',
-                                    endTime: item.EndTime ? item.EndTime.trim() : '',
-                                    daysOfWeek: item.DaysOfWeek ? item.DaysOfWeek.trim() : ''
-                                });
+                        try {
+                            var bannersData = parseCSV(xhrBanners.responseText);
+                            var newBanners = [];
+                            for (var i = 0; i < bannersData.length; i++) {
+                                var item = bannersData[i];
+
+                                // 抓取不分大小寫的欄位防呆（相容可能打錯大小寫的情況）
+                                var imgUrl = item.ImageUrl || item.imageurl || item.IMAGEURL || '';
+                                var duration = item.DurationSec || item.durationsec || '';
+                                var sDate = item.StartDate || item.startdate || '';
+                                var eDate = item.EndDate || item.enddate || '';
+                                var sTime = item.StartTime || item.starttime || '';
+                                var eTime = item.EndTime || item.endtime || '';
+                                var days = item.DaysOfWeek || item.daysofweek || item.Days || '';
+
+                                if (imgUrl && imgUrl.trim() !== '') {
+                                    newBanners.push({
+                                        url: convertDriveUrl(imgUrl.trim()),
+                                        duration: parseInt(duration) || bannerIntervalSec,
+                                        startDate: sDate ? sDate.trim() : '',
+                                        endDate: eDate ? eDate.trim() : '',
+                                        startTime: sTime ? sTime.trim() : '',
+                                        endTime: eTime ? eTime.trim() : '',
+                                        daysOfWeek: days ? days.trim() : ''
+                                    });
+                                }
                             }
+                            rawBannerList = newBanners;
+                        } catch (errBanners) {
+                            console.error("解析 Banners 失敗:", errBanners);
                         }
-                        rawBannerList = newBanners;
                     }
                 };
                 xhrBanners.send();
@@ -749,24 +789,28 @@
                 xhrCourses.open('GET', buildFreshUrl(COURSES_CSV_URL), true);
                 xhrCourses.onreadystatechange = function() {
                     if (xhrCourses.readyState === 4 && xhrCourses.status === 200) {
-                        var coursesData = parseCSV(xhrCourses.responseText);
-                        var newSchedule = { 0:[], 1:[], 2:[], 3:[], 4:[], 5:[], 6:[] };
-                        for (var i = 0; i < coursesData.length; i++) {
-                            var item = coursesData[i];
-                            var day = parseInt(item.Day);
-                            if (!isNaN(day) && newSchedule[day]) {
-                                newSchedule[day].push({
-                                    startTime: item.StartTime,
-                                    endTime: item.EndTime,
-                                    name: item.Name,
-                                    teacher: item.Teacher,
-                                    room: item.Room
-                                });
+                        try {
+                            var coursesData = parseCSV(xhrCourses.responseText);
+                            var newSchedule = { 0:[], 1:[], 2:[], 3:[], 4:[], 5:[], 6:[] };
+                            for (var i = 0; i < coursesData.length; i++) {
+                                var item = coursesData[i];
+                                var day = parseInt(item.Day);
+                                if (!isNaN(day) && newSchedule[day]) {
+                                    newSchedule[day].push({
+                                        startTime: item.StartTime,
+                                        endTime: item.EndTime,
+                                        name: item.Name,
+                                        teacher: item.Teacher,
+                                        room: item.Room
+                                    });
+                                }
                             }
+                            currentSchedule = newSchedule;
+                            renderDaySelector();
+                            routeDisplay();
+                        } catch (errCourses) {
+                            console.error("解析 Courses 失敗:", errCourses);
                         }
-                        currentSchedule = newSchedule;
-                        renderDaySelector();
-                        routeDisplay();
                     }
                 };
                 xhrCourses.send();
@@ -837,7 +881,6 @@
             });
         }
 
-        // 總控路由判斷
         function routeDisplay() {
             stopMainTimer();
 
@@ -845,7 +888,6 @@
             var validBanners = getActiveBanners();
             var bannerAllowed = enableBanners && isBannerTimeActive() && (validBanners.length > 0);
 
-            // 如果課表禁止，但圖片允許且有符合條件的圖片 ➔ 直奔圖片！
             if (!courseAllowed && bannerAllowed) {
                 renderBannerLoop();
                 return;
@@ -874,7 +916,6 @@
 
             if (currentPage >= totalPages) {
                 currentPage = 0;
-                // 當課表播完一輪，若 Banners 開啟、在 Banners 時段內、且「當前有符合條件的圖片」➔ 切去圖片！
                 if (bannerAllowed) {
                     renderBannerLoop();
                     return;
@@ -932,10 +973,9 @@
             stopMainTimer();
 
             var courseAllowed = enableCourses && isCourseTimeActive();
-            var validBanners = getActiveBanners(); // 動態取得當前時間合法的圖片清單
+            var validBanners = getActiveBanners();
             var bannerAllowed = enableBanners && isBannerTimeActive() && (validBanners.length > 0);
 
-            // 防呆：如果此刻沒有任何合法的圖片可以播，切回課表
             if (!bannerAllowed) {
                 currentPage = 0;
                 renderBoard();
@@ -945,10 +985,8 @@
             var cardContainer = document.getElementById('cardContainer');
             var bannerContainer = document.getElementById('bannerContainer');
 
-            // 如果索引超出目前合法的圖片數量 ➔ 代表合法的圖片播完一輪了！
             if (currentBannerIndex >= validBanners.length) {
                 currentBannerIndex = 0;
-                // 如果課表此時允許播放，切回課表交替
                 if (courseAllowed) {
                     currentPage = 0;
                     renderBoard();
