@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>課程教室公告看板 (步驟2：快取即時同步加強版)</title>
+    <title>課程教室公告看板 (步驟3：Banners 總開關加入)</title>
     <style>
         /* --- 基礎鎖定與重置 --- */
         * {
@@ -538,14 +538,14 @@
         let bannerIntervalSec = 10;
         let showHeader = true;
 
-        // 步驟 1：課表總開關
+        // 步驟 1 & 2：課表總開關與時段設定
         let enableCourses = true;
-
-        // 步驟 2：課表時段設定變數
         let courseStartTime = "";
         let courseEndTime = "";
 
-        // 快取破壞工具：替網址加上獨一無二的時間戳記，強迫瀏覽器抓最新 CSV！
+        // 【步驟 3 新增】：Banners 總開關（預設為 true）
+        let enableBanners = true;
+
         function buildFreshUrl(url) {
             if (!url) return '';
             var timestamp = new Date().getTime();
@@ -617,7 +617,7 @@
         }
 
         function fetchAllData() {
-            // 1. 抓取 Config (使用快取破壞網址)
+            // 1. 抓取 Config
             if (CONFIG_CSV_URL && CONFIG_CSV_URL.indexOf("YOUR_CONFIG") === -1) {
                 var xhrConfig = new XMLHttpRequest();
                 xhrConfig.open('GET', buildFreshUrl(CONFIG_CSV_URL), true);
@@ -633,14 +633,16 @@
                             if (k === 'marqueeText') marqueeText = v;
                             if (k === 'carouselIntervalSec') carouselIntervalSec = parseInt(v) || 8;
                             if (k === 'bannerIntervalSec') bannerIntervalSec = parseInt(v) || 10;
-                            if (k === 'showHeader') {
-                                showHeader = String(v).toLowerCase() !== 'false';
-                            }
-                            if (k === 'enableCourses') {
-                                enableCourses = String(v).toLowerCase() !== 'false';
-                            }
+                            if (k === 'showHeader') showHeader = String(v).toLowerCase() !== 'false';
+                            
+                            if (k === 'enableCourses') enableCourses = String(v).toLowerCase() !== 'false';
                             if (k === 'courseStartTime') courseStartTime = v;
                             if (k === 'courseEndTime') courseEndTime = v;
+
+                            // 【步驟 3 新增】：讀取 Banners 總開關
+                            if (k === 'enableBanners') {
+                                enableBanners = String(v).toLowerCase() !== 'false';
+                            }
                         }
                         document.getElementById('boardTitle').innerText = boardTitle;
                         document.getElementById('marqueeText').innerText = marqueeText;
@@ -651,7 +653,7 @@
                 xhrConfig.send();
             }
 
-            // 2. 抓取 Banners 圖片清單 (使用快取破壞網址)
+            // 2. 抓取 Banners 圖片清單
             if (BANNERS_CSV_URL && BANNERS_CSV_URL.indexOf("YOUR_BANNERS") === -1) {
                 var xhrBanners = new XMLHttpRequest();
                 xhrBanners.open('GET', buildFreshUrl(BANNERS_CSV_URL), true);
@@ -674,7 +676,7 @@
                 xhrBanners.send();
             }
 
-            // 3. 抓取 Courses (使用快取破壞網址)
+            // 3. 抓取 Courses
             if (COURSES_CSV_URL && COURSES_CSV_URL.indexOf("YOUR_COURSES") === -1) {
                 var xhrCourses = new XMLHttpRequest();
                 xhrCourses.open('GET', buildFreshUrl(COURSES_CSV_URL), true);
@@ -768,16 +770,20 @@
             });
         }
 
+        // 【步驟 3 核心路由】：結合「課表總開關/時段」與「Banners 總開關」判定
         function routeDisplay() {
             stopMainTimer();
 
             var courseAllowed = enableCourses && isCourseTimeActive();
+            var bannerAllowed = enableBanners && (bannerList.length > 0);
 
-            if (!courseAllowed && bannerList.length > 0) {
+            // 如果課表被禁止，但圖片被允許 ➔ 直奔圖片！
+            if (!courseAllowed && bannerAllowed) {
                 renderBannerLoop();
                 return;
             }
 
+            // 否則預設跑課表
             renderBoard();
         }
 
@@ -785,7 +791,10 @@
             stopMainTimer();
 
             var courseAllowed = enableCourses && isCourseTimeActive();
-            if (!courseAllowed && bannerList.length > 0) {
+            var bannerAllowed = enableBanners && (bannerList.length > 0);
+
+            // 如果課表不被允許（開關被關或時段不符合），且圖片允許 ➔ 跳至圖片
+            if (!courseAllowed && bannerAllowed) {
                 renderBannerLoop();
                 return;
             }
@@ -796,9 +805,11 @@
             var cardContainer = document.getElementById('cardContainer');
             var bannerContainer = document.getElementById('bannerContainer');
 
+            // 當課表播完一輪時
             if (currentPage >= totalPages) {
                 currentPage = 0;
-                if (bannerList.length > 0) {
+                // 如果 Banners 總開關是開啟的 (true)，才切換去播圖片！
+                if (bannerAllowed) {
                     renderBannerLoop();
                     return;
                 }
@@ -853,27 +864,34 @@
 
         function renderBannerLoop() {
             stopMainTimer();
-            var cardContainer = document.getElementById('cardContainer');
-            var bannerContainer = document.getElementById('bannerContainer');
 
-            cardContainer.style.display = 'none';
-            bannerContainer.style.display = 'block';
-            applyHeaderVisibility(false);
+            var courseAllowed = enableCourses && isCourseTimeActive();
+            var bannerAllowed = enableBanners && (bannerList.length > 0);
 
-            if (bannerList.length === 0) {
+            // 【步驟 3 關鍵防呆】：如果 Banners 總開關被設為 false，絕對不准播圖片！
+            if (!bannerAllowed) {
+                currentPage = 0;
                 renderBoard();
                 return;
             }
 
+            var cardContainer = document.getElementById('cardContainer');
+            var bannerContainer = document.getElementById('bannerContainer');
+
+            // 當圖片播完一輪時
             if (currentBannerIndex >= bannerList.length) {
                 currentBannerIndex = 0;
-                var courseAllowed = enableCourses && isCourseTimeActive();
+                // 如果課表此時允許播放，切回課表；否則繼續圖片輪播
                 if (courseAllowed) {
                     currentPage = 0;
                     renderBoard();
                     return;
                 }
             }
+
+            cardContainer.style.display = 'none';
+            bannerContainer.style.display = 'block';
+            applyHeaderVisibility(false);
 
             var item = bannerList[currentBannerIndex];
             document.getElementById('bannerImg').src = item.url;
