@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>課程教室公告看板 (步驟3：Banners 總開關加入)</title>
+    <title>課程教室公告看板 (步驟4：Banners 時段自動開關)</title>
     <style>
         /* --- 基礎鎖定與重置 --- */
         * {
@@ -324,7 +324,7 @@
             color: #ffffff;
             padding: 8px 18px;
             border-radius: 12px;
-            border: 2.5px solid #334155;
+            border: 3.5px solid #334155;
             font-size: 22px;
             font-weight: 900;
             box-shadow: 0px 4px 0px rgba(0, 0, 0, 0.12);
@@ -538,13 +538,17 @@
         let bannerIntervalSec = 10;
         let showHeader = true;
 
-        // 步驟 1 & 2：課表總開關與時段設定
+        // 步驟 1 & 2：課表總開關與時段
         let enableCourses = true;
         let courseStartTime = "";
         let courseEndTime = "";
 
-        // 【步驟 3 新增】：Banners 總開關（預設為 true）
+        // 步驟 3：Banners 總開關
         let enableBanners = true;
+
+        // 【步驟 4 新增】：Banners 時段設定變數
+        let bannerStartTime = "";
+        let bannerEndTime = "";
 
         function buildFreshUrl(url) {
             if (!url) return '';
@@ -601,10 +605,27 @@
             return h * 60 + m;
         }
 
+        // 檢查課表時段
         function isCourseTimeActive() {
             var startMins = parseMinutes(courseStartTime);
             var endMins = parseMinutes(courseEndTime);
             if (startMins === -1 || endMins === -1) return true;
+
+            var now = new Date();
+            var currentMins = now.getHours() * 60 + now.getMinutes();
+
+            if (startMins <= endMins) {
+                return currentMins >= startMins && currentMins < endMins;
+            } else {
+                return currentMins >= startMins || currentMins < endMins;
+            }
+        }
+
+        // 【步驟 4 新增】：檢查 Banners 時段
+        function isBannerTimeActive() {
+            var startMins = parseMinutes(bannerStartTime);
+            var endMins = parseMinutes(bannerEndTime);
+            if (startMins === -1 || endMins === -1) return true; // 未設定即代表全天允許
 
             var now = new Date();
             var currentMins = now.getHours() * 60 + now.getMinutes();
@@ -639,10 +660,11 @@
                             if (k === 'courseStartTime') courseStartTime = v;
                             if (k === 'courseEndTime') courseEndTime = v;
 
-                            // 【步驟 3 新增】：讀取 Banners 總開關
-                            if (k === 'enableBanners') {
-                                enableBanners = String(v).toLowerCase() !== 'false';
-                            }
+                            if (k === 'enableBanners') enableBanners = String(v).toLowerCase() !== 'false';
+                            
+                            // 【步驟 4 新增】：讀取 Banners 時段設定
+                            if (k === 'bannerStartTime') bannerStartTime = v;
+                            if (k === 'bannerEndTime') bannerEndTime = v;
                         }
                         document.getElementById('boardTitle').innerText = boardTitle;
                         document.getElementById('marqueeText').innerText = marqueeText;
@@ -770,20 +792,20 @@
             });
         }
 
-        // 【步驟 3 核心路由】：結合「課表總開關/時段」與「Banners 總開關」判定
+        // 【步驟 4 核心路由】：結合「課表總開關/時段」與「Banners 總開關/時段」雙模組連動
         function routeDisplay() {
             stopMainTimer();
 
             var courseAllowed = enableCourses && isCourseTimeActive();
-            var bannerAllowed = enableBanners && (bannerList.length > 0);
+            var bannerAllowed = enableBanners && isBannerTimeActive() && (bannerList.length > 0);
 
-            // 如果課表被禁止，但圖片被允許 ➔ 直奔圖片！
+            // 如果課表不被允許（開關關閉或不在時段內），但 Banners 允許 ➔ 直奔圖片！
             if (!courseAllowed && bannerAllowed) {
                 renderBannerLoop();
                 return;
             }
 
-            // 否則預設跑課表
+            // 否則預設走課表
             renderBoard();
         }
 
@@ -791,9 +813,9 @@
             stopMainTimer();
 
             var courseAllowed = enableCourses && isCourseTimeActive();
-            var bannerAllowed = enableBanners && (bannerList.length > 0);
+            var bannerAllowed = enableBanners && isBannerTimeActive() && (bannerList.length > 0);
 
-            // 如果課表不被允許（開關被關或時段不符合），且圖片允許 ➔ 跳至圖片
+            // 如果課表此時不被允許，但圖片允許 ➔ 跳去圖片
             if (!courseAllowed && bannerAllowed) {
                 renderBannerLoop();
                 return;
@@ -808,7 +830,7 @@
             // 當課表播完一輪時
             if (currentPage >= totalPages) {
                 currentPage = 0;
-                // 如果 Banners 總開關是開啟的 (true)，才切換去播圖片！
+                // 如果 Banners 總開關是開啟的，且「也在 Banners 的允許時段內」，才切換去播圖片！
                 if (bannerAllowed) {
                     renderBannerLoop();
                     return;
@@ -866,9 +888,9 @@
             stopMainTimer();
 
             var courseAllowed = enableCourses && isCourseTimeActive();
-            var bannerAllowed = enableBanners && (bannerList.length > 0);
+            var bannerAllowed = enableBanners && isBannerTimeActive() && (bannerList.length > 0);
 
-            // 【步驟 3 關鍵防呆】：如果 Banners 總開關被設為 false，絕對不准播圖片！
+            // 【步驟 4 關鍵防呆】：如果 Banners 被關閉或「不在 Banners 指定時段內」，絕對不准播圖片！
             if (!bannerAllowed) {
                 currentPage = 0;
                 renderBoard();
@@ -881,7 +903,7 @@
             // 當圖片播完一輪時
             if (currentBannerIndex >= bannerList.length) {
                 currentBannerIndex = 0;
-                // 如果課表此時允許播放，切回課表；否則繼續圖片輪播
+                // 如果課表此時允許播放（總開關開 + 時段符合），切回課表；否則繼續圖片輪播
                 if (courseAllowed) {
                     currentPage = 0;
                     renderBoard();
