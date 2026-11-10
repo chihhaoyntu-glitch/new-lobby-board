@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>課程教室公告看板 (終極時間與星期解析修復版)</title>
+    <title>課程教室公告看板 (步驟4：Banners 時段自動開關)</title>
     <style>
         /* --- 基礎鎖定與重置 --- */
         * {
@@ -525,7 +525,7 @@
         ];
 
         let currentSchedule = { 0:[], 1:[], 2:[], 3:[], 4:[], 5:[], 6:[] };
-        let rawBannerList = [];
+        let bannerList = [];
         let currentBannerIndex = 0;
         
         let activeDay = new Date().getDay();
@@ -538,13 +538,15 @@
         let bannerIntervalSec = 10;
         let showHeader = true;
 
-        // 課表總開關與時段
+        // 步驟 1 & 2：課表總開關與時段
         let enableCourses = true;
         let courseStartTime = "";
         let courseEndTime = "";
 
-        // Banners 總開關與整體時段
+        // 步驟 3：Banners 總開關
         let enableBanners = true;
+
+        // 【步驟 4 新增】：Banners 時段設定變數
         let bannerStartTime = "";
         let bannerEndTime = "";
 
@@ -564,9 +566,9 @@
                 var values = lines[i].replace(/\r/g, '').split(',');
                 var obj = {};
                 for (var j = 0; j < headers.length; j++) {
-                    var rawKey = headers[j] ? String(headers[j]).trim().replace(/^"|"$/g, '') : '';
-                    var val = values[j] ? String(values[j]).trim().replace(/^"|"$/g, '') : '';
-                    if (rawKey) obj[rawKey] = val;
+                    var key = headers[j].trim().replace(/^"|"$/g, '');
+                    var val = values[j] ? values[j].trim().replace(/^"|"$/g, '') : '';
+                    obj[key] = val;
                 }
                 result.push(obj);
             }
@@ -594,38 +596,19 @@
             return url;
         }
 
-        // 超級安全的時間轉分鐘數工具（自動相容全形冒號、秒數與非字串輸入）
-        function safeParseMinutes(inputVal) {
-            if (inputVal === null || inputVal === undefined) return -1;
-            var str = String(inputVal).trim().replace('：', ':');
-            if (str === '' || str.indexOf(':') === -1) return -1;
-            
-            var parts = str.split(':');
+        function parseMinutes(timeStr) {
+            if (!timeStr || typeof timeStr !== 'string' || timeStr.indexOf(':') === -1) return -1;
+            var parts = timeStr.trim().split(':');
             var h = parseInt(parts[0], 10);
             var m = parseInt(parts[1], 10);
             if (isNaN(h) || isNaN(m)) return -1;
             return h * 60 + m;
         }
 
-        // 安全解析日期數字 (例如 2026-11-04 ➔ 20261104)
-        function safeParseDateNum(inputVal) {
-            if (!inputVal) return 0;
-            var str = String(inputVal).trim().replace(/\//g, '-');
-            var parts = str.split('-');
-            if (parts.length === 3) {
-                var y = parseInt(parts[0], 10);
-                var m = parseInt(parts[1], 10);
-                var d = parseInt(parts[2], 10);
-                if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
-                    return y * 10000 + m * 100 + d;
-                }
-            }
-            return 0;
-        }
-
+        // 檢查課表時段
         function isCourseTimeActive() {
-            var startMins = safeParseMinutes(courseStartTime);
-            var endMins = safeParseMinutes(courseEndTime);
+            var startMins = parseMinutes(courseStartTime);
+            var endMins = parseMinutes(courseEndTime);
             if (startMins === -1 || endMins === -1) return true;
 
             var now = new Date();
@@ -638,10 +621,11 @@
             }
         }
 
+        // 【步驟 4 新增】：檢查 Banners 時段
         function isBannerTimeActive() {
-            var startMins = safeParseMinutes(bannerStartTime);
-            var endMins = safeParseMinutes(bannerEndTime);
-            if (startMins === -1 || endMins === -1) return true;
+            var startMins = parseMinutes(bannerStartTime);
+            var endMins = parseMinutes(bannerEndTime);
+            if (startMins === -1 || endMins === -1) return true; // 未設定即代表全天允許
 
             var now = new Date();
             var currentMins = now.getHours() * 60 + now.getMinutes();
@@ -651,64 +635,6 @@
             } else {
                 return currentMins >= startMins || currentMins < endMins;
             }
-        }
-
-        // 【重構精修版】：單張圖片三維排程判定
-        function getActiveBanners() {
-            var activeList = [];
-            try {
-                var now = new Date();
-                var todayNum = now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate();
-                var currentMins = now.getHours() * 60 + now.getMinutes();
-                var currentDayNum = now.getDay(); // 數字型態 0~6
-
-                for (var i = 0; i < rawBannerList.length; i++) {
-                    var b = rawBannerList[i];
-                    
-                    // 1. 日期範圍判斷 (支援單邊留空、格式相容)
-                    var sNum = safeParseDateNum(b.startDate);
-                    var eNum = safeParseDateNum(b.endDate);
-                    if (sNum > 0 && todayNum < sNum) continue;
-                    if (eNum > 0 && todayNum > eNum) continue;
-
-                    // 2. 星期判斷 (全安全轉型)
-                    if (b.daysOfWeek !== undefined && b.daysOfWeek !== null && String(b.daysOfWeek).trim() !== '') {
-                        var rawDaysStr = String(b.daysOfWeek).trim();
-                        // 洗掉可能出現的中文逗號或特殊空白
-                        var dayArray = rawDaysStr.replace(/，/g, ',').split(',').map(function(item){
-                            return parseInt(String(item).trim(), 10);
-                        });
-                        if (dayArray.indexOf(currentDayNum) === -1) {
-                            continue; // 不在指定的星期內，跳過
-                        }
-                    }
-
-                    // 3. 每日時間判斷 (Start/End 獨立解耦)
-                    var startMins = safeParseMinutes(b.startTime);
-                    var endMins = safeParseMinutes(b.endTime);
-
-                    if (startMins !== -1 && endMins !== -1) {
-                        if (startMins <= endMins) {
-                            if (currentMins < startMins || currentMins >= endMins) continue;
-                        } else {
-                            // 跨夜時段
-                            if (currentMins < startMins && currentMins >= endMins) continue;
-                        }
-                    } else if (startMins !== -1 && endMins === -1) {
-                        if (currentMins < startMins) continue;
-                    } else if (startMins === -1 && endMins !== -1) {
-                        if (currentMins >= endMins) continue;
-                    }
-
-                    // 通過考驗！
-                    activeList.push(b);
-                }
-            } catch (err) {
-                console.error("getActiveBanners 發生未預期的例外，開啟保底模式:", err);
-                return rawBannerList;
-            }
-
-            return activeList;
         }
 
         function fetchAllData() {
@@ -718,84 +644,55 @@
                 xhrConfig.open('GET', buildFreshUrl(CONFIG_CSV_URL), true);
                 xhrConfig.onreadystatechange = function() {
                     if (xhrConfig.readyState === 4 && xhrConfig.status === 200) {
-                        try {
-                            var configData = parseCSV(xhrConfig.responseText);
-                            for (var i = 0; i < configData.length; i++) {
-                                var row = configData[i];
-                                var k = row.Key ? String(row.Key).trim() : '';
-                                var v = row.Value ? String(row.Value).trim() : '';
+                        var configData = parseCSV(xhrConfig.responseText);
+                        for (var i = 0; i < configData.length; i++) {
+                            var row = configData[i];
+                            var k = row.Key ? row.Key.trim() : '';
+                            var v = row.Value ? row.Value.trim() : '';
 
-                                if (k === 'boardTitle') boardTitle = v;
-                                if (k === 'marqueeText') marqueeText = v;
-                                if (k === 'carouselIntervalSec') carouselIntervalSec = parseInt(v) || 8;
-                                if (k === 'bannerIntervalSec') bannerIntervalSec = parseInt(v) || 10;
-                                if (k === 'showHeader') showHeader = String(v).toLowerCase() !== 'false';
-                                
-                                if (k === 'enableCourses') enableCourses = String(v).toLowerCase() !== 'false';
-                                if (k === 'courseStartTime') courseStartTime = v;
-                                if (k === 'courseEndTime') courseEndTime = v;
+                            if (k === 'boardTitle') boardTitle = v;
+                            if (k === 'marqueeText') marqueeText = v;
+                            if (k === 'carouselIntervalSec') carouselIntervalSec = parseInt(v) || 8;
+                            if (k === 'bannerIntervalSec') bannerIntervalSec = parseInt(v) || 10;
+                            if (k === 'showHeader') showHeader = String(v).toLowerCase() !== 'false';
+                            
+                            if (k === 'enableCourses') enableCourses = String(v).toLowerCase() !== 'false';
+                            if (k === 'courseStartTime') courseStartTime = v;
+                            if (k === 'courseEndTime') courseEndTime = v;
 
-                                if (k === 'enableBanners') enableBanners = String(v).toLowerCase() !== 'false';
-                                if (k === 'bannerStartTime') bannerStartTime = v;
-                                if (k === 'bannerEndTime') bannerEndTime = v;
-                            }
-                            document.getElementById('boardTitle').innerText = boardTitle;
-                            document.getElementById('marqueeText').innerText = marqueeText;
-                            applyHeaderVisibility(showHeader);
-                            routeDisplay();
-                        } catch (errConfig) {
-                            console.error("Config 解析失敗:", errConfig);
+                            if (k === 'enableBanners') enableBanners = String(v).toLowerCase() !== 'false';
+                            
+                            // 【步驟 4 新增】：讀取 Banners 時段設定
+                            if (k === 'bannerStartTime') bannerStartTime = v;
+                            if (k === 'bannerEndTime') bannerEndTime = v;
                         }
+                        document.getElementById('boardTitle').innerText = boardTitle;
+                        document.getElementById('marqueeText').innerText = marqueeText;
+                        applyHeaderVisibility(showHeader);
+                        routeDisplay();
                     }
                 };
                 xhrConfig.send();
             }
 
-            // 2. 抓取 Banners 圖片清單 (安全擷取欄位)
+            // 2. 抓取 Banners 圖片清單
             if (BANNERS_CSV_URL && BANNERS_CSV_URL.indexOf("YOUR_BANNERS") === -1) {
                 var xhrBanners = new XMLHttpRequest();
                 xhrBanners.open('GET', buildFreshUrl(BANNERS_CSV_URL), true);
                 xhrBanners.onreadystatechange = function() {
                     if (xhrBanners.readyState === 4 && xhrBanners.status === 200) {
-                        try {
-                            var bannersData = parseCSV(xhrBanners.responseText);
-                            var newBanners = [];
-                            for (var i = 0; i < bannersData.length; i++) {
-                                var item = bannersData[i];
-
-                                var getField = function(keyName) {
-                                    for (var prop in item) {
-                                        if (prop.toLowerCase() === keyName.toLowerCase()) {
-                                            return item[prop];
-                                        }
-                                    }
-                                    return '';
-                                };
-
-                                var imgUrl = getField('ImageUrl');
-                                var duration = getField('DurationSec');
-                                var sDate = getField('StartDate');
-                                var eDate = getField('EndDate');
-                                var sTime = getField('StartTime');
-                                var eTime = getField('EndTime');
-                                var days = getField('DaysOfWeek');
-
-                                if (imgUrl && String(imgUrl).trim() !== '') {
-                                    newBanners.push({
-                                        url: convertDriveUrl(String(imgUrl).trim()),
-                                        duration: parseInt(duration) || bannerIntervalSec,
-                                        startDate: sDate ? String(sDate).trim() : '',
-                                        endDate: eDate ? String(eDate).trim() : '',
-                                        startTime: sTime ? String(sTime).trim() : '',
-                                        endTime: eTime ? String(eTime).trim() : '',
-                                        daysOfWeek: days ? String(days).trim() : ''
-                                    });
-                                }
+                        var bannersData = parseCSV(xhrBanners.responseText);
+                        var newBanners = [];
+                        for (var i = 0; i < bannersData.length; i++) {
+                            var item = bannersData[i];
+                            if (item.ImageUrl && item.ImageUrl.trim() !== '') {
+                                newBanners.push({
+                                    url: convertDriveUrl(item.ImageUrl.trim()),
+                                    duration: parseInt(item.DurationSec) || bannerIntervalSec
+                                });
                             }
-                            rawBannerList = newBanners;
-                        } catch (errBanners) {
-                            console.error("Banners 解析失敗:", errBanners);
                         }
+                        bannerList = newBanners;
                     }
                 };
                 xhrBanners.send();
@@ -807,28 +704,24 @@
                 xhrCourses.open('GET', buildFreshUrl(COURSES_CSV_URL), true);
                 xhrCourses.onreadystatechange = function() {
                     if (xhrCourses.readyState === 4 && xhrCourses.status === 200) {
-                        try {
-                            var coursesData = parseCSV(xhrCourses.responseText);
-                            var newSchedule = { 0:[], 1:[], 2:[], 3:[], 4:[], 5:[], 6:[] };
-                            for (var i = 0; i < coursesData.length; i++) {
-                                var item = coursesData[i];
-                                var day = parseInt(item.Day);
-                                if (!isNaN(day) && newSchedule[day]) {
-                                    newSchedule[day].push({
-                                        startTime: item.StartTime,
-                                        endTime: item.EndTime,
-                                        name: item.Name,
-                                        teacher: item.Teacher,
-                                        room: item.Room
-                                    });
-                                }
+                        var coursesData = parseCSV(xhrCourses.responseText);
+                        var newSchedule = { 0:[], 1:[], 2:[], 3:[], 4:[], 5:[], 6:[] };
+                        for (var i = 0; i < coursesData.length; i++) {
+                            var item = coursesData[i];
+                            var day = parseInt(item.Day);
+                            if (!isNaN(day) && newSchedule[day]) {
+                                newSchedule[day].push({
+                                    startTime: item.StartTime,
+                                    endTime: item.EndTime,
+                                    name: item.Name,
+                                    teacher: item.Teacher,
+                                    room: item.Room
+                                });
                             }
-                            currentSchedule = newSchedule;
-                            renderDaySelector();
-                            routeDisplay();
-                        } catch (errCourses) {
-                            console.error("Courses 解析失敗:", errCourses);
                         }
+                        currentSchedule = newSchedule;
+                        renderDaySelector();
+                        routeDisplay();
                     }
                 };
                 xhrCourses.send();
@@ -840,7 +733,7 @@
             var now = new Date();
             var currentMins = now.getHours() * 60 + now.getMinutes();
             var parseMinutesHelper = function(tStr) {
-                var parts = String(tStr).split(':');
+                var parts = tStr.split(':');
                 return parseInt(parts[0]) * 60 + parseInt(parts[1]);
             };
             var startMins = parseMinutesHelper(startStr);
@@ -899,18 +792,20 @@
             });
         }
 
+        // 【步驟 4 核心路由】：結合「課表總開關/時段」與「Banners 總開關/時段」雙模組連動
         function routeDisplay() {
             stopMainTimer();
 
             var courseAllowed = enableCourses && isCourseTimeActive();
-            var validBanners = getActiveBanners();
-            var bannerAllowed = enableBanners && isBannerTimeActive() && (validBanners.length > 0);
+            var bannerAllowed = enableBanners && isBannerTimeActive() && (bannerList.length > 0);
 
+            // 如果課表不被允許（開關關閉或不在時段內），但 Banners 允許 ➔ 直奔圖片！
             if (!courseAllowed && bannerAllowed) {
                 renderBannerLoop();
                 return;
             }
 
+            // 否則預設走課表
             renderBoard();
         }
 
@@ -918,9 +813,9 @@
             stopMainTimer();
 
             var courseAllowed = enableCourses && isCourseTimeActive();
-            var validBanners = getActiveBanners();
-            var bannerAllowed = enableBanners && isBannerTimeActive() && (validBanners.length > 0);
+            var bannerAllowed = enableBanners && isBannerTimeActive() && (bannerList.length > 0);
 
+            // 如果課表此時不被允許，但圖片允許 ➔ 跳去圖片
             if (!courseAllowed && bannerAllowed) {
                 renderBannerLoop();
                 return;
@@ -932,8 +827,10 @@
             var cardContainer = document.getElementById('cardContainer');
             var bannerContainer = document.getElementById('bannerContainer');
 
+            // 當課表播完一輪時
             if (currentPage >= totalPages) {
                 currentPage = 0;
+                // 如果 Banners 總開關是開啟的，且「也在 Banners 的允許時段內」，才切換去播圖片！
                 if (bannerAllowed) {
                     renderBannerLoop();
                     return;
@@ -991,9 +888,9 @@
             stopMainTimer();
 
             var courseAllowed = enableCourses && isCourseTimeActive();
-            var validBanners = getActiveBanners();
-            var bannerAllowed = enableBanners && isBannerTimeActive() && (validBanners.length > 0);
+            var bannerAllowed = enableBanners && isBannerTimeActive() && (bannerList.length > 0);
 
+            // 【步驟 4 關鍵防呆】：如果 Banners 被關閉或「不在 Banners 指定時段內」，絕對不准播圖片！
             if (!bannerAllowed) {
                 currentPage = 0;
                 renderBoard();
@@ -1003,8 +900,10 @@
             var cardContainer = document.getElementById('cardContainer');
             var bannerContainer = document.getElementById('bannerContainer');
 
-            if (currentBannerIndex >= validBanners.length) {
+            // 當圖片播完一輪時
+            if (currentBannerIndex >= bannerList.length) {
                 currentBannerIndex = 0;
+                // 如果課表此時允許播放（總開關開 + 時段符合），切回課表；否則繼續圖片輪播
                 if (courseAllowed) {
                     currentPage = 0;
                     renderBoard();
@@ -1016,7 +915,7 @@
             bannerContainer.style.display = 'block';
             applyHeaderVisibility(false);
 
-            var item = validBanners[currentBannerIndex];
+            var item = bannerList[currentBannerIndex];
             document.getElementById('bannerImg').src = item.url;
 
             mainTimer = setTimeout(function() {
