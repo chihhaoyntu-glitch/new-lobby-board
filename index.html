@@ -60,7 +60,6 @@
             box-shadow: 0px 6px 0px rgba(51, 65, 85, 0.15), 0px 12px 20px rgba(0, 0, 0, 0.06);
             display: flex;
             flex-direction: column;
-            gap: 6px;
             flex-shrink: 0;
             transition: all 0.3s ease;
         }
@@ -78,7 +77,6 @@
         .header-title-box {
             display: flex;
             align-items: center;
-            gap: 12px;
         }
 
         .icon-badge {
@@ -104,7 +102,6 @@
         .clock-container {
             display: flex;
             align-items: center;
-            gap: 6px;
             margin-left: 8px;
             padding-left: 12px;
             border-left: 2px solid #cbd5e1;
@@ -128,7 +125,6 @@
         .day-selector {
             display: flex;
             align-items: center;
-            gap: 6px;
             background-color: #f1f5f9;
             padding: 4px;
             border-radius: 12px;
@@ -146,7 +142,6 @@
             cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 4px;
         }
 
         .day-btn.active {
@@ -172,7 +167,6 @@
         .page-badge {
             display: flex;
             align-items: center;
-            gap: 6px;
             background-color: #fef3c7;
             border: 2.5px solid #fbbf24;
             color: #78350f;
@@ -197,7 +191,6 @@
             flex: 1;
             display: flex;
             flex-direction: column;
-            gap: 10px;
             margin: auto 0;
             flex-shrink: 0;
             transition: all 0.3s ease;
@@ -309,7 +302,6 @@
         .teacher-name {
             display: flex;
             align-items: center;
-            gap: 6px;
             margin-top: 4px;
             font-size: 17px;
             font-weight: 800;
@@ -331,7 +323,6 @@
             flex-shrink: 0;
             display: flex;
             align-items: center;
-            gap: 6px;
         }
 
         /* --- 招生圖片輪播容器 --- */
@@ -371,7 +362,6 @@
             margin-top: 8px;
             display: flex;
             align-items: center;
-            gap: 12px;
             box-shadow: 0px 3px 0px rgba(0, 0, 0, 0.08);
             flex-shrink: 0;
         }
@@ -407,6 +397,21 @@
             0% { transform: translateX(100%); }
             100% { transform: translateX(-100%); }
         }
+
+        /* Android 5.1 舊版 WebView 相容：以 margin 取代 flex gap */
+        .header-bar > * + * { margin-top: 6px; }
+        .header-title-box > * + * { margin-left: 12px; }
+        .clock-container > * + * { margin-left: 6px; }
+        .day-btn + .day-btn { margin-left: 6px; }
+        .day-btn > * + * { margin-left: 4px; }
+        .page-badge > * + * { margin-left: 6px; }
+        .card-container > * + * { margin-top: 10px; }
+        .teacher-name > * + * { margin-left: 6px; }
+        .room-badge > * + * { margin-left: 6px; }
+        .footer-bar > * + * { margin-left: 12px; }
+
+        /* 不支援 object-fit 的舊版 WebView 仍以固定容器顯示圖片 */
+        .banner-img { max-width: 100%; max-height: 100%; }
     </style>
 </head>
 <body>
@@ -515,11 +520,11 @@
 
     <!-- APP LOGIC -->
     <script>
-        const COURSES_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTkOoAr-xdQSYp8U6yyedy5uUypUlQVQiPSiVzLd8lAEmfQacXXY2g8hNEjcmeObgxRcguKX7xsr34V/pub?gid=0&single=true&output=csv";
-        const CONFIG_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTkOoAr-xdQSYp8U6yyedy5uUypUlQVQiPSiVzLd8lAEmfQacXXY2g8hNEjcmeObgxRcguKX7xsr34V/pub?gid=962273106&single=true&output=csv";
-        const BANNERS_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTkOoAr-xdQSYp8U6yyedy5uUypUlQVQiPSiVzLd8lAEmfQacXXY2g8hNEjcmeObgxRcguKX7xsr34V/pub?gid=1617619420&single=true&output=csv";
+        var COURSES_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTkOoAr-xdQSYp8U6yyedy5uUypUlQVQiPSiVzLd8lAEmfQacXXY2g8hNEjcmeObgxRcguKX7xsr34V/pub?gid=0&single=true&output=csv";
+        var CONFIG_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTkOoAr-xdQSYp8U6yyedy5uUypUlQVQiPSiVzLd8lAEmfQacXXY2g8hNEjcmeObgxRcguKX7xsr34V/pub?gid=962273106&single=true&output=csv";
+        var BANNERS_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTkOoAr-xdQSYp8U6yyedy5uUypUlQVQiPSiVzLd8lAEmfQacXXY2g8hNEjcmeObgxRcguKX7xsr34V/pub?gid=1617619420&single=true&output=csv";
 
-        const DAYS = [
+        var DAYS = [
             { id: 1, name: '一' }, { id: 2, name: '二' }, { id: 3, name: '三' },
             { id: 4, name: '四' }, { id: 5, name: '五' }, { id: 6, name: '六' }, { id: 0, name: '日' }
         ];
@@ -550,29 +555,77 @@
         let bannerStartTime = "";
         let bannerEndTime = "";
 
+        var dataLoading = false;
+        var currentDisplayMode = 'board';
+        var currentBannerSourceIndex = -1;
+        var currentBannerUrl = '';
+        var lastRealDay = new Date().getDay();
+        var ruleCheckTimer = null;
+
         function buildFreshUrl(url) {
             if (!url) return '';
             var timestamp = new Date().getTime();
             return url + (url.indexOf('?') !== -1 ? '&_cb=' : '?_cb=') + timestamp;
         }
 
+        // 標準 CSV 解析：支援引號、欄位內逗號、雙引號、跨行文字及 CRLF。
         function parseCSV(text) {
-            var lines = text.split('\n');
+            if (!text) return [];
+            text = String(text).replace(/^\uFEFF/, '');
+            var rows = [], row = [], field = '', inQuotes = false;
+            for (var i = 0; i < text.length; i++) {
+                var ch = text.charAt(i);
+                if (inQuotes) {
+                    if (ch === '"') {
+                        if (text.charAt(i + 1) === '"') { field += '"'; i++; }
+                        else { inQuotes = false; }
+                    } else { field += ch; }
+                } else if (ch === '"' && field.length === 0) {
+                    inQuotes = true;
+                } else if (ch === ',') {
+                    row.push(field); field = '';
+                } else if (ch === '\n' || ch === '\r') {
+                    if (ch === '\r' && text.charAt(i + 1) === '\n') i++;
+                    row.push(field); field = '';
+                    if (row.length > 1 || row[0] !== '') rows.push(row);
+                    row = [];
+                } else { field += ch; }
+            }
+            if (field.length || row.length) { row.push(field); rows.push(row); }
+            if (!rows.length) return [];
+            var headers = rows.shift();
+            for (var h = 0; h < headers.length; h++) headers[h] = String(headers[h]).trim();
             var result = [];
-            if (lines.length < 2) return result;
-            var headers = lines[0].replace(/\r/g, '').split(',');
-            for (var i = 1; i < lines.length; i++) {
-                if (!lines[i].trim()) continue;
-                var values = lines[i].replace(/\r/g, '').split(',');
+            for (var r = 0; r < rows.length; r++) {
                 var obj = {};
-                for (var j = 0; j < headers.length; j++) {
-                    var key = headers[j].trim().replace(/^"|"$/g, '');
-                    var val = values[j] ? values[j].trim().replace(/^"|"$/g, '') : '';
-                    obj[key] = val;
-                }
+                for (var c = 0; c < headers.length; c++) obj[headers[c]] = rows[r][c] === undefined ? '' : String(rows[r][c]).trim();
                 result.push(obj);
             }
             return result;
+        }
+
+        function requestCSV(url, callback) {
+            if (!url) { callback(null); return; }
+            var xhr = new XMLHttpRequest();
+            var completed = false;
+            var timeoutId = setTimeout(function() { finish(null); }, 15000);
+            function finish(data) {
+                if (completed) return;
+                completed = true;
+                clearTimeout(timeoutId);
+                callback(data);
+            }
+            try {
+                xhr.open('GET', buildFreshUrl(url), true);
+                xhr.onreadystatechange = function() {
+                    if (xhr.readyState === 4) {
+                        if (xhr.status === 200 || xhr.status === 0) finish(xhr.responseText);
+                        else finish(null);
+                    }
+                };
+                xhr.onerror = function() { finish(null); };
+                xhr.send();
+            } catch (e) { finish(null); }
         }
 
         function applyHeaderVisibility(visible) {
@@ -590,164 +643,174 @@
         function convertDriveUrl(url) {
             if (!url) return '';
             var match = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
-            if (match && match[1]) {
-                return 'https://drive.google.com/uc?export=view&id=' + match[1];
-            }
+            if (match && match[1]) return 'https://drive.google.com/uc?export=view&id=' + match[1];
             return url;
         }
 
         function parseMinutes(timeStr) {
-            if (!timeStr || typeof timeStr !== 'string' || timeStr.indexOf(':') === -1) return -1;
-            var parts = timeStr.trim().split(':');
-            var h = parseInt(parts[0], 10);
-            var m = parseInt(parts[1], 10);
-            if (isNaN(h) || isNaN(m)) return -1;
+            if (!timeStr || typeof timeStr !== 'string') return -1;
+            var match = timeStr.trim().match(/^(\d{1,2}):(\d{2})$/);
+            if (!match) return -1;
+            var h = parseInt(match[1], 10), m = parseInt(match[2], 10);
+            if (h < 0 || h > 23 || m < 0 || m > 59) return -1;
             return h * 60 + m;
         }
 
-        // 檢查課表時段
-        function isCourseTimeActive() {
-            var startMins = parseMinutes(courseStartTime);
-            var endMins = parseMinutes(courseEndTime);
-            if (startMins === -1 || endMins === -1) return true;
-
-            var now = new Date();
-            var currentMins = now.getHours() * 60 + now.getMinutes();
-
-            if (startMins <= endMins) {
-                return currentMins >= startMins && currentMins < endMins;
-            } else {
-                return currentMins >= startMins || currentMins < endMins;
+        function isTimeRangeActive(startStr, endStr, now, allowSingleBound) {
+            var startMins = parseMinutes(startStr), endMins = parseMinutes(endStr);
+            var clockNow = now || new Date();
+            var currentMins = clockNow.getHours() * 60 + clockNow.getMinutes();
+            // 全域設定沿用舊規則；單張 Banner 則允許只設定開始或結束時間。
+            if (startMins === -1 || endMins === -1) {
+                if (!allowSingleBound) return true;
+                if (startMins !== -1) return currentMins >= startMins;
+                if (endMins !== -1) return currentMins < endMins;
+                return true;
             }
+            if (startMins === endMins) return false;
+            if (startMins < endMins) return currentMins >= startMins && currentMins < endMins;
+            return currentMins >= startMins || currentMins < endMins;
         }
 
-        // 【步驟 4 新增】：檢查 Banners 時段
-        function isBannerTimeActive() {
-            var startMins = parseMinutes(bannerStartTime);
-            var endMins = parseMinutes(bannerEndTime);
-            if (startMins === -1 || endMins === -1) return true; // 未設定即代表全天允許
+        function isCourseTimeActive() { return isTimeRangeActive(courseStartTime, courseEndTime, new Date()); }
+        function isBannerTimeActive() { return isTimeRangeActive(bannerStartTime, bannerEndTime, new Date()); }
 
-            var now = new Date();
-            var currentMins = now.getHours() * 60 + now.getMinutes();
-
-            if (startMins <= endMins) {
-                return currentMins >= startMins && currentMins < endMins;
-            } else {
-                return currentMins >= startMins || currentMins < endMins;
+        function normalizeDateKey(value) {
+            if (!value) return '';
+            var v = String(value).trim();
+            var m = v.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})$/);
+            var y, mo, d;
+            if (m) { y = parseInt(m[1], 10); mo = parseInt(m[2], 10); d = parseInt(m[3], 10); }
+            else {
+                m = v.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})$/);
+                if (!m) return '';
+                y = parseInt(m[3], 10); mo = parseInt(m[1], 10); d = parseInt(m[2], 10);
             }
+            if (mo < 1 || mo > 12 || d < 1 || d > 31) return '';
+            var checkDate = new Date(y, mo - 1, d);
+            if (checkDate.getFullYear() !== y || checkDate.getMonth() !== mo - 1 || checkDate.getDate() !== d) return '';
+            return y * 10000 + mo * 100 + d;
+        }
+
+        function isBannerItemActive(item, now) {
+            now = now || new Date();
+            var todayKey = now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate();
+            var startDate = normalizeDateKey(item.startDate);
+            var endDate = normalizeDateKey(item.endDate);
+            if (startDate && todayKey < startDate) return false;
+            if (endDate && todayKey > endDate) return false;
+            if (!isTimeRangeActive(item.startTime, item.endTime, now, true)) return false;
+            if (item.daysOfWeek) {
+                var dayText = String(item.daysOfWeek).trim();
+                if (dayText && dayText !== '*' && dayText.toLowerCase() !== 'all') {
+                    var allowed = dayText.split(/[;,\s]+/);
+                    var today = String(now.getDay());
+                    if (allowed.indexOf(today) === -1) return false;
+                }
+            }
+            return true;
+        }
+
+        function getEligibleBanners() {
+            var now = new Date(), eligible = [];
+            if (!enableBanners || !isBannerTimeActive()) return eligible;
+            for (var i = 0; i < bannerList.length; i++) {
+                if (isBannerItemActive(bannerList[i], now)) eligible.push({ item: bannerList[i], sourceIndex: i });
+            }
+            return eligible;
         }
 
         function fetchAllData() {
-            // 1. 抓取 Config
-            if (CONFIG_CSV_URL && CONFIG_CSV_URL.indexOf("YOUR_CONFIG") === -1) {
-                var xhrConfig = new XMLHttpRequest();
-                xhrConfig.open('GET', buildFreshUrl(CONFIG_CSV_URL), true);
-                xhrConfig.onreadystatechange = function() {
-                    if (xhrConfig.readyState === 4 && xhrConfig.status === 200) {
-                        var configData = parseCSV(xhrConfig.responseText);
-                        for (var i = 0; i < configData.length; i++) {
-                            var row = configData[i];
-                            var k = row.Key ? row.Key.trim() : '';
-                            var v = row.Value ? row.Value.trim() : '';
-
-                            if (k === 'boardTitle') boardTitle = v;
-                            if (k === 'marqueeText') marqueeText = v;
-                            if (k === 'carouselIntervalSec') carouselIntervalSec = parseInt(v) || 8;
-                            if (k === 'bannerIntervalSec') bannerIntervalSec = parseInt(v) || 10;
-                            if (k === 'showHeader') showHeader = String(v).toLowerCase() !== 'false';
-                            
-                            if (k === 'enableCourses') enableCourses = String(v).toLowerCase() !== 'false';
-                            if (k === 'courseStartTime') courseStartTime = v;
-                            if (k === 'courseEndTime') courseEndTime = v;
-
-                            if (k === 'enableBanners') enableBanners = String(v).toLowerCase() !== 'false';
-                            
-                            // 【步驟 4 新增】：讀取 Banners 時段設定
-                            if (k === 'bannerStartTime') bannerStartTime = v;
-                            if (k === 'bannerEndTime') bannerEndTime = v;
-                        }
-                        document.getElementById('boardTitle').innerText = boardTitle;
-                        document.getElementById('marqueeText').innerText = marqueeText;
-                        applyHeaderVisibility(showHeader);
-                        routeDisplay();
-                    }
-                };
-                xhrConfig.send();
+            if (dataLoading) return;
+            dataLoading = true;
+            var remaining = 3;
+            function finishBatch() {
+                remaining--;
+                if (remaining > 0) return;
+                dataLoading = false;
+                renderDaySelector();
+                document.getElementById('boardTitle').innerText = boardTitle;
+                document.getElementById('marqueeText').innerText = marqueeText;
+                applyHeaderVisibility(showHeader);
+                syncAfterDataRefresh();
             }
 
-            // 2. 抓取 Banners 圖片清單
-            if (BANNERS_CSV_URL && BANNERS_CSV_URL.indexOf("YOUR_BANNERS") === -1) {
-                var xhrBanners = new XMLHttpRequest();
-                xhrBanners.open('GET', buildFreshUrl(BANNERS_CSV_URL), true);
-                xhrBanners.onreadystatechange = function() {
-                    if (xhrBanners.readyState === 4 && xhrBanners.status === 200) {
-                        var bannersData = parseCSV(xhrBanners.responseText);
-                        var newBanners = [];
-                        for (var i = 0; i < bannersData.length; i++) {
-                            var item = bannersData[i];
-                            if (item.ImageUrl && item.ImageUrl.trim() !== '') {
-                                newBanners.push({
-                                    url: convertDriveUrl(item.ImageUrl.trim()),
-                                    duration: parseInt(item.DurationSec) || bannerIntervalSec
-                                });
-                            }
-                        }
-                        bannerList = newBanners;
+            requestCSV(CONFIG_CSV_URL, function(response) {
+                if (response !== null) {
+                    var configData = parseCSV(response);
+                    for (var i = 0; i < configData.length; i++) {
+                        var row = configData[i], k = row.Key ? row.Key.trim() : '', v = row.Value === undefined ? '' : row.Value.trim();
+                        if (k === 'boardTitle') boardTitle = v;
+                        if (k === 'marqueeText') marqueeText = v;
+                        if (k === 'carouselIntervalSec') carouselIntervalSec = validSeconds(v, 8);
+                        if (k === 'bannerIntervalSec') bannerIntervalSec = validSeconds(v, 10);
+                        if (k === 'showHeader') showHeader = String(v).toLowerCase() !== 'false';
+                        if (k === 'enableCourses') enableCourses = String(v).toLowerCase() !== 'false';
+                        if (k === 'courseStartTime') courseStartTime = v;
+                        if (k === 'courseEndTime') courseEndTime = v;
+                        if (k === 'enableBanners') enableBanners = String(v).toLowerCase() !== 'false';
+                        if (k === 'bannerStartTime') bannerStartTime = v;
+                        if (k === 'bannerEndTime') bannerEndTime = v;
                     }
-                };
-                xhrBanners.send();
-            }
+                }
+                finishBatch();
+            });
 
-            // 3. 抓取 Courses
-            if (COURSES_CSV_URL && COURSES_CSV_URL.indexOf("YOUR_COURSES") === -1) {
-                var xhrCourses = new XMLHttpRequest();
-                xhrCourses.open('GET', buildFreshUrl(COURSES_CSV_URL), true);
-                xhrCourses.onreadystatechange = function() {
-                    if (xhrCourses.readyState === 4 && xhrCourses.status === 200) {
-                        var coursesData = parseCSV(xhrCourses.responseText);
-                        var newSchedule = { 0:[], 1:[], 2:[], 3:[], 4:[], 5:[], 6:[] };
-                        for (var i = 0; i < coursesData.length; i++) {
-                            var item = coursesData[i];
-                            var day = parseInt(item.Day);
-                            if (!isNaN(day) && newSchedule[day]) {
-                                newSchedule[day].push({
-                                    startTime: item.StartTime,
-                                    endTime: item.EndTime,
-                                    name: item.Name,
-                                    teacher: item.Teacher,
-                                    room: item.Room
-                                });
-                            }
+            requestCSV(BANNERS_CSV_URL, function(response) {
+                if (response !== null) {
+                    var rows = parseCSV(response), newBanners = [];
+                    for (var i = 0; i < rows.length; i++) {
+                        var item = rows[i];
+                        if (item.ImageUrl && item.ImageUrl.trim()) {
+                            var duration = parseInt(item.DurationSec, 10);
+                            newBanners.push({
+                                url: convertDriveUrl(item.ImageUrl.trim()),
+                                duration: (!isNaN(duration) && duration > 0) ? duration : 0,
+                                startDate: item.StartDate || '', endDate: item.EndDate || '',
+                                startTime: item.StartTime || '', endTime: item.EndTime || '',
+                                daysOfWeek: item.DaysOfWeek || ''
+                            });
                         }
-                        currentSchedule = newSchedule;
-                        renderDaySelector();
-                        routeDisplay();
                     }
-                };
-                xhrCourses.send();
-            }
+                    bannerList = newBanners;
+                    if (currentBannerIndex >= bannerList.length) currentBannerIndex = 0;
+                }
+                finishBatch();
+            });
+
+            requestCSV(COURSES_CSV_URL, function(response) {
+                if (response !== null) {
+                    var rows = parseCSV(response);
+                    var newSchedule = { 0:[], 1:[], 2:[], 3:[], 4:[], 5:[], 6:[] };
+                    for (var i = 0; i < rows.length; i++) {
+                        var item = rows[i], day = parseInt(item.Day, 10);
+                        if (!isNaN(day) && day >= 0 && day <= 6) {
+                            newSchedule[day].push({ startTime:item.StartTime, endTime:item.EndTime, name:item.Name, teacher:item.Teacher, room:item.Room });
+                        }
+                    }
+                    currentSchedule = newSchedule;
+                }
+                finishBatch();
+            });
+        }
+
+        function validSeconds(value, fallback) {
+            var n = parseInt(value, 10);
+            return (!isNaN(n) && n > 0) ? n : fallback;
         }
 
         function evaluateCourseStatus(startStr, endStr) {
-            if (!startStr || !endStr) return { text: '未開始', class: '' };
-            var now = new Date();
-            var currentMins = now.getHours() * 60 + now.getMinutes();
-            var parseMinutesHelper = function(tStr) {
-                var parts = tStr.split(':');
-                return parseInt(parts[0]) * 60 + parseInt(parts[1]);
-            };
-            var startMins = parseMinutesHelper(startStr);
-            var endMins = parseMinutesHelper(endStr);
-
-            if (currentMins >= startMins && currentMins <= endMins) {
-                return { text: '● 進行中', class: 'status-live' };
-            } else if (currentMins < startMins && (startMins - currentMins) <= 30) {
-                return { text: '即將開始', class: '' };
-            } else if (currentMins < startMins) {
-                return { text: '未開始', class: '' };
-            } else {
-                return { text: '已結束', class: '' };
-            }
+            var startMins = parseMinutes(startStr), endMins = parseMinutes(endStr);
+            if (startMins === -1 || endMins === -1) return { text:'未開始', class:'' };
+            var now = new Date(), currentMins = now.getHours() * 60 + now.getMinutes();
+            var active = startMins === endMins ? false : (startMins < endMins ? (currentMins >= startMins && currentMins < endMins) : (currentMins >= startMins || currentMins < endMins));
+            if (active) return { text:'● 進行中', class:'status-live' };
+            var untilStart = startMins - currentMins;
+            if (untilStart < 0) untilStart += 1440;
+            if (untilStart > 0 && untilStart <= 30) return { text:'即將開始', class:'' };
+            if (startMins < endMins && currentMins >= endMins) return { text:'已結束', class:'' };
+            if (startMins > endMins && currentMins >= endMins && currentMins < startMins) return { text:'已結束', class:'' };
+            return { text:'未開始', class:'' };
         }
 
         function updateTopClock() {
@@ -760,7 +823,6 @@
             var hours = (now.getHours() < 10 ? '0' : '') + now.getHours();
             var mins = (now.getMinutes() < 10 ? '0' : '') + now.getMinutes();
             var secs = (now.getSeconds() < 10 ? '0' : '') + now.getSeconds();
-
             document.getElementById('topClockText').innerText = year + '/' + month + '/' + date + ' (' + dayStr + ') ' + hours + ':' + mins + ':' + secs;
         }
 
@@ -768,184 +830,157 @@
             var container = document.getElementById('daySelector');
             container.innerHTML = '';
             var realToday = new Date().getDay();
-
             DAYS.forEach(function(day) {
                 var isSelected = activeDay === day.id;
                 var isToday = realToday === day.id;
-
                 var btn = document.createElement('button');
                 btn.type = 'button';
                 btn.className = 'day-btn' + (isSelected ? ' active' : '') + (isToday && !isSelected ? ' today' : '');
-                
                 var dayLabel = '週' + day.name;
                 if (isToday) dayLabel += ' <span class="today-badge">今日</span>';
-
                 btn.innerHTML = dayLabel;
-                btn.onclick = function() {
-                    activeDay = day.id;
-                    currentPage = 0;
-                    currentBannerIndex = 0;
-                    renderDaySelector();
-                    routeDisplay();
-                };
+                btn.onclick = function() { activeDay = day.id; currentPage = 0; currentBannerIndex = 0; renderDaySelector(); routeDisplay(); };
                 container.appendChild(btn);
             });
         }
 
-        // 【步驟 4 核心路由】：結合「課表總開關/時段」與「Banners 總開關/時段」雙模組連動
-        function routeDisplay() {
-            stopMainTimer();
-
+        // 資料定時更新後，若目前 Banner 仍符合條件且圖片未變更，就讓它播完，避免刷新瞬間跳圖。
+        function syncAfterDataRefresh() {
+            var eligible = getEligibleBanners();
             var courseAllowed = enableCourses && isCourseTimeActive();
-            var bannerAllowed = enableBanners && isBannerTimeActive() && (bannerList.length > 0);
-
-            // 如果課表不被允許（開關關閉或不在時段內），但 Banners 允許 ➔ 直奔圖片！
-            if (!courseAllowed && bannerAllowed) {
-                renderBannerLoop();
+            if (currentDisplayMode === 'banner') {
+                for (var i = 0; i < eligible.length; i++) {
+                    if (eligible[i].item.url === currentBannerUrl) {
+                        currentBannerIndex = i;
+                        currentBannerSourceIndex = eligible[i].sourceIndex;
+                        return;
+                    }
+                }
+                if (eligible.length) { currentBannerIndex = 0; renderBannerLoop(); }
+                else routeDisplay();
                 return;
             }
+            if (!courseAllowed && eligible.length) routeDisplay();
+            else renderBoard();
+        }
 
-            // 否則預設走課表
+        // 兩個模組都關閉時，依既定需求保留課表作為預設版型。
+        function routeDisplay() {
+            stopMainTimer();
+            var eligible = getEligibleBanners();
+            var courseAllowed = enableCourses && isCourseTimeActive();
+            if (!courseAllowed && eligible.length > 0) { currentBannerIndex = 0; renderBannerLoop(); return; }
             renderBoard();
         }
 
         function renderBoard() {
             stopMainTimer();
-
+            currentDisplayMode = 'board';
+            var eligible = getEligibleBanners();
             var courseAllowed = enableCourses && isCourseTimeActive();
-            var bannerAllowed = enableBanners && isBannerTimeActive() && (bannerList.length > 0);
-
-            // 如果課表此時不被允許，但圖片允許 ➔ 跳去圖片
-            if (!courseAllowed && bannerAllowed) {
-                renderBannerLoop();
-                return;
-            }
-
+            if (!courseAllowed && eligible.length > 0) { renderBannerLoop(); return; }
             var dayCourses = currentSchedule[activeDay] || [];
             var totalPages = Math.ceil(dayCourses.length / 4) || 1;
-
             var cardContainer = document.getElementById('cardContainer');
             var bannerContainer = document.getElementById('bannerContainer');
-
-            // 當課表播完一輪時
             if (currentPage >= totalPages) {
                 currentPage = 0;
-                // 如果 Banners 總開關是開啟的，且「也在 Banners 的允許時段內」，才切換去播圖片！
-                if (bannerAllowed) {
-                    renderBannerLoop();
-                    return;
-                }
+                if (eligible.length > 0) { renderBannerLoop(); return; }
             }
-
             bannerContainer.style.display = 'none';
             cardContainer.style.display = 'flex';
             applyHeaderVisibility(showHeader);
-
             var pageBadge = document.getElementById('pageBadge');
             if (totalPages > 1) {
                 pageBadge.style.display = 'flex';
                 document.getElementById('pageText').innerText = '頁次 ' + (currentPage + 1) + ' / ' + totalPages;
-            } else {
-                pageBadge.style.display = 'none';
-            }
-
+            } else { pageBadge.style.display = 'none'; }
             var pageCourses = dayCourses.slice(currentPage * 4, (currentPage + 1) * 4);
-
             for (var i = 0; i < 4; i++) {
-                var item = pageCourses[i];
-                var card = document.getElementById('card-' + i);
-
+                var item = pageCourses[i], card = document.getElementById('card-' + i);
                 if (item) {
-                    card.style.visibility = 'visible';
-                    card.style.display = 'flex';
-                    card.style.animation = 'none';
-                    card.offsetHeight;
-                    card.style.animation = 'cardFadeIn 0.5s ease forwards';
-                    card.style.animationDelay = (i * 0.07) + 's';
-
+                    card.style.visibility = 'visible'; card.style.display = 'flex'; card.style.animation = 'none'; card.offsetHeight;
+                    card.style.animation = 'cardFadeIn 0.5s ease forwards'; card.style.animationDelay = (i * 0.07) + 's';
                     document.getElementById('time-' + i).innerText = (item.startTime || '00:00') + ' - ' + (item.endTime || '00:00');
                     document.getElementById('name-' + i).innerText = item.name || '未命名課程';
                     document.getElementById('teacher-' + i).innerText = item.teacher || '未指定';
                     document.getElementById('room-' + i).innerText = item.room || '未指定教室';
-
-                    var statusObj = evaluateCourseStatus(item.startTime, item.endTime);
-                    var statusElem = document.getElementById('status-' + i);
-                    statusElem.innerText = statusObj.text;
-                    statusElem.className = 'status-pill ' + statusObj.class;
-                } else {
-                    card.style.visibility = 'hidden';
-                    card.style.display = 'none';
-                }
+                    var statusObj = evaluateCourseStatus(item.startTime, item.endTime), statusElem = document.getElementById('status-' + i);
+                    statusElem.innerText = statusObj.text; statusElem.className = 'status-pill ' + statusObj.class;
+                } else { card.style.visibility = 'hidden'; card.style.display = 'none'; }
             }
-
-            mainTimer = setTimeout(function() {
-                currentPage++;
-                renderBoard();
-            }, carouselIntervalSec * 1000);
+            mainTimer = setTimeout(function() { currentPage++; renderBoard(); }, carouselIntervalSec * 1000);
         }
 
         function renderBannerLoop() {
             stopMainTimer();
-
+            var eligible = getEligibleBanners();
+            if (!eligible.length) { currentPage = 0; renderBoard(); return; }
+            currentDisplayMode = 'banner';
             var courseAllowed = enableCourses && isCourseTimeActive();
-            var bannerAllowed = enableBanners && isBannerTimeActive() && (bannerList.length > 0);
-
-            // 【步驟 4 關鍵防呆】：如果 Banners 被關閉或「不在 Banners 指定時段內」，絕對不准播圖片！
-            if (!bannerAllowed) {
-                currentPage = 0;
-                renderBoard();
-                return;
+            if (currentBannerIndex >= eligible.length) {
+                currentBannerIndex = 0;
+                if (courseAllowed) { currentPage = 0; renderBoard(); return; }
             }
-
             var cardContainer = document.getElementById('cardContainer');
             var bannerContainer = document.getElementById('bannerContainer');
-
-            // 當圖片播完一輪時
-            if (currentBannerIndex >= bannerList.length) {
-                currentBannerIndex = 0;
-                // 如果課表此時允許播放（總開關開 + 時段符合），切回課表；否則繼續圖片輪播
-                if (courseAllowed) {
-                    currentPage = 0;
-                    renderBoard();
-                    return;
-                }
-            }
-
-            cardContainer.style.display = 'none';
-            bannerContainer.style.display = 'block';
-            applyHeaderVisibility(false);
-
-            var item = bannerList[currentBannerIndex];
+            cardContainer.style.display = 'none'; bannerContainer.style.display = 'block'; applyHeaderVisibility(false);
+            var item = eligible[currentBannerIndex].item;
+            currentBannerSourceIndex = eligible[currentBannerIndex].sourceIndex;
+            currentBannerUrl = item.url;
             document.getElementById('bannerImg').src = item.url;
+            var duration = item.duration || bannerIntervalSec;
+            mainTimer = setTimeout(function() { currentBannerIndex++; renderBannerLoop(); }, duration * 1000);
+        }
 
-            mainTimer = setTimeout(function() {
-                currentBannerIndex++;
-                renderBannerLoop();
-            }, item.duration * 1000);
+        function checkDisplayRules() {
+            var today = new Date().getDay();
+            if (today !== lastRealDay) {
+                if (activeDay === lastRealDay) activeDay = today;
+                lastRealDay = today;
+                renderDaySelector();
+                currentPage = 0;
+                if (currentDisplayMode === 'board') routeDisplay();
+            }
+            var eligible = getEligibleBanners();
+            var courseAllowed = enableCourses && isCourseTimeActive();
+            if (currentDisplayMode === 'banner') {
+                var currentStillEligible = false;
+                for (var i = 0; i < eligible.length; i++) {
+                    if (eligible[i].sourceIndex === currentBannerSourceIndex) currentStillEligible = true;
+                }
+                if (!eligible.length) {
+                    currentBannerIndex = 0;
+                    routeDisplay();
+                } else if (!currentStillEligible) {
+                    currentBannerIndex = 0;
+                    renderBannerLoop();
+                } else {
+                    // 若有其他圖片剛進入可播放時段，重新對齊目前圖片在可播放清單中的位置。
+                    for (var j = 0; j < eligible.length; j++) {
+                        if (eligible[j].sourceIndex === currentBannerSourceIndex) currentBannerIndex = j;
+                    }
+                }
+            } else if (!courseAllowed && eligible.length > 0) {
+                currentBannerIndex = 0;
+                routeDisplay();
+            }
         }
 
         function stopMainTimer() {
-            if (mainTimer !== null) {
-                clearTimeout(mainTimer);
-                clearInterval(mainTimer);
-                mainTimer = null;
-            }
+            if (mainTimer !== null) { clearTimeout(mainTimer); clearInterval(mainTimer); mainTimer = null; }
         }
 
         function nextPage() {
             stopMainTimer();
-            var dayCourses = currentSchedule[activeDay] || [];
-            var totalPages = Math.ceil(dayCourses.length / 4) || 1;
-            currentPage = (currentPage + 1) % totalPages;
-            renderBoard();
+            var dayCourses = currentSchedule[activeDay] || [], totalPages = Math.ceil(dayCourses.length / 4) || 1;
+            currentPage = (currentPage + 1) % totalPages; renderBoard();
         }
 
         function prevPage() {
             stopMainTimer();
-            var dayCourses = currentSchedule[activeDay] || [];
-            var totalPages = Math.ceil(dayCourses.length / 4) || 1;
-            currentPage = (currentPage - 1 + totalPages) % totalPages;
-            renderBoard();
+            var dayCourses = currentSchedule[activeDay] || [], totalPages = Math.ceil(dayCourses.length / 4) || 1;
+            currentPage = (currentPage - 1 + totalPages) % totalPages; renderBoard();
         }
 
         function updateSignageScale() {
@@ -957,9 +992,11 @@
         window.onload = function() {
             renderDaySelector();
             updateSignageScale();
+            updateTopClock();
             fetchAllData();
             setInterval(updateTopClock, 1000);
             setInterval(fetchAllData, 300000);
+            ruleCheckTimer = setInterval(checkDisplayRules, 1000);
         };
 
         window.onresize = updateSignageScale;
